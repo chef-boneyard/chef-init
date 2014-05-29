@@ -15,8 +15,8 @@ describe Chef::Resource::RunitSupervisor do
     expect(@resource.resource_name).to eql(:runit_supervisor)
   end
 
-  it 'should set the provider to Chef::Provider::Service::Supervisor::Runit' do
-    expect(@resource.provider).to eql(Chef::Provider::Service::Supervisor::Runit)
+  it 'should set the provider to Chef::Provider::Supervisor::Runit' do
+    expect(@resource.provider).to eql(Chef::Provider::Supervisor::Runit)
   end
 
   it 'should set the sv_bin to /opt/chef/embedded/bin/sv' do

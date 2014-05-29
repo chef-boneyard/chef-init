@@ -19,7 +19,12 @@ require 'chef/resource/file'
 require 'chef/provider/file'
 require 'chef/resource/directory'
 require 'chef/provider/directory'
-require 'chef-init/exceptions'
+
+class Chef
+  class Exceptions
+    class Supervisor < RuntimeError; end
+  end
+end
 
 class Chef
   class Provider

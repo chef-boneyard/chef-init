@@ -19,7 +19,6 @@ require 'chef/resource'
 class Chef
   class Resource
     class Supervisor < Chef::Resource
-      extend ChefInit::Helpers
 
       state_attrs :enabled
 
