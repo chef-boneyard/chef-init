@@ -1,7 +1,5 @@
 require 'chef-init/version'
-require 'chef-init/chef_runner'
 require 'chef-init/helpers'
-require 'chef/dsl/container_service'
 require 'mixlib/cli'
 
 module ChefInit
@@ -42,7 +40,6 @@ module ChefInit
 
     def run
       handle_options
-
       parent_pid = Process.pid
 
       fork do
@@ -72,12 +69,12 @@ module ChefInit
 
     def set_local_mode_defaults
       config[:config_file] ||= "/chef/zero.rb"
-      config[:json_attribs] ||= "/chef/first-boot.json" if File.exists?("/chef/first-boot.json")
+      config[:json_attribs] ||= "/chef/first-boot.json"
     end
 
     def set_server_mode_defaults
       config[:config_file] ||= "/etc/chef/client.rb"
-      config[:json_attribs] ||= "/etc/chef/first-boot.json" if File.exists?("/etc/chef/first-boot.json")
+      config[:json_attribs] ||= "/etc/chef/first-boot.json"
     end
 
     #
@@ -106,13 +103,12 @@ module ChefInit
     # Chef Methods
     #
     def run_chef_client
-      chef_runner.converge
+      if config[:local_mode]
+        system_command("chef-client -c #{config[:config_file]} -j #{config[:json_attribs]} -z")
+      else
+        system_command("chef-client -c #{config[:config_file]} -j #{config[:json_attribs]}")
+      end
     end
-
-    def chef_runner
-      @chef_runner ||= ChefRunner.new(config[:config_file], config[:json_attribs], config[:local_mode])
-    end
-
 
     # The last character in the process_name should have brackets around it
     # so that it doesn't find the grep process itself. 

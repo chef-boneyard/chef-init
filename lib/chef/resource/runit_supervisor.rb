@@ -15,14 +15,12 @@
 # limitations under the License.
 #
 
-require 'chef-init/helpers'
 require 'chef/resource/supervisor'
 require 'chef/provider/supervisor/runit'
 
 class Chef
   class Resource
     class RunitSupervisor < Chef::Resource::Supervisor
-      include ChefInit::Helpers
 
       def initialize(name, run_context = nil)
         super
@@ -30,8 +28,8 @@ class Chef
         @provider = Chef::Provider::Supervisor::Runit
         @service_name = name
         @command = nil
-        @sv_bin = ::File.join(omnibus_embedded_bin_dir, 'sv')
-        @service_dir = ::File.join(omnibus_root, 'service')
+        @sv_bin = '/opt/chef/embedded/bin/sv'
+        @service_dir = '/opt/chef/service'
       end
 
       def service_name(arg=nil)

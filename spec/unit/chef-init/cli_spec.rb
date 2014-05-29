@@ -141,9 +141,23 @@ describe ChefInit::CLI do
   describe "#run_chef_client" do
     let(:chef_runner) { double("ChefRunner", :converge => nil) }
 
-    it "should converge the chef_runner" do
-      cli.stub(:chef_runner).and_return(chef_runner)
-      expect(chef_runner).to receive(:converge)
+    before(:each) do
+      cli.handle_options
+    end
+  
+    context "when local-mode flag was passed in" do
+      let(:argv) { %w[ -z ] }
+
+      it "should execute chef-client in local-mode" do
+        cli.stub(:system_command)
+        expect(cli).to receive(:system_command).with("chef-client -c /chef/zero.rb -j /chef/first-boot.json -z")
+        cli.run_chef_client
+      end
+    end
+
+    it "should execute chef-client" do
+      cli.stub(:system_command)
+      expect(cli).to receive(:system_command).with("chef-client -c /etc/chef/client.rb -j /etc/chef/first-boot.json")
       cli.run_chef_client
     end
   end
