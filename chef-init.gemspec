@@ -22,7 +22,8 @@ Gem::Specification.new do |s|
   s.add_dependency "mixlib-shellout", "~> 1.4"
   s.add_dependency "chef", "~> 11.12"
 
+  s.add_development_dependency "rspec", "~> 2.14.0"
   s.add_development_dependency "rspec-core", "~> 2.14.0"
-  s.add_development_dependency "rspec-expectation", "~> 2.14.0"
+  s.add_development_dependency "rspec-expectations", "~> 2.14.0"
   s.add_development_dependency "rspec-mocks", "~> 2.14.0"
 end
