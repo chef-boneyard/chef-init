@@ -15,3 +15,4 @@
 # limitations under the License.
 #
 require 'chef/dsl/container_service'
+require 'ohai/plugins/docker_container'
