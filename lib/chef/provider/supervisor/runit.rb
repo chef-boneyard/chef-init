@@ -126,7 +126,7 @@ class Chef
         def log_dir
           return @log_dir unless @log_dir.nil?
           @log_dir = Chef::Resource::Directory.new("/var/log/#{new_resource.service_name}", run_context)
-          @log_dir.resursive(true)
+          @log_dir.recursive(true)
           @log_dir.mode(00755)
           @log_dir
         end
