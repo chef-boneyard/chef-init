@@ -1,3 +1,4 @@
+require 'ohai/mixin/docker_container_metadata'
 
 Ohai.plugin(:DockerContainer) do
   include Ohai::Mixin::DockerContainerMetadata
