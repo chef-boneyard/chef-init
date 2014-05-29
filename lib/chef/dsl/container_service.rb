@@ -14,9 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-require 'chef-init/exceptions'
 require 'chef/resource/runit_supervisor'
 require 'chef/provider/service/supervisor/runit'
+
+class Chef
+  class Exceptions
+    class Supervisor < RuntimeError; end
+  end
+end
 
 class Chef
   class Recipe

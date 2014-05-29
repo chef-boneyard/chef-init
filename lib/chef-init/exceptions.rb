@@ -32,8 +32,3 @@ module ChefInit
   end
 end
 
-class Chef
-  class Exceptions
-    class Supervisor < RuntimeError; end
-  end
-end
