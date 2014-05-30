@@ -15,6 +15,8 @@
 # limitations under the License.
 #
 require 'chef/provider/supervisor'
+require 'chef/resource/link'
+require 'chef/provider/link'
 require 'chef/resource/file'
 require 'chef/provider/file'
 require 'chef/resource/directory'
@@ -33,7 +35,8 @@ class Chef
 
         def initialize(*args)
           super
-          @service_dir = nil
+          @staging_dir = nil
+          @service_dir_link = nil
           @down_file = nil
           @run_script = nil
           @log_dir = nil
@@ -61,8 +64,8 @@ class Chef
         end
 
         def enable_supervisor
-          Chef::Log.debug("Creating service directory for #{new_resource.service_name}")
-          service_dir.run_action(:create)
+          Chef::Log.debug("Creating service staging directory for #{new_resource.service_name}")
+          staging_dir.run_action(:create)
 
           Chef::Log.debug("Creating down file for #{new_resource.service_name}")
           down_file.run_action(:create)
@@ -78,12 +81,19 @@ class Chef
 
           Chef::Log.debug("Creating log run script for #{new_resource.service_name}")
           log_run_script.run_action(:create)
+
+          Chef::Log.debug("Linking staging directory to service directory for #{new_resource.service_name}")
+          service_dir_link.run_action(:create)
         end
 
         private
 
         def service_dir_name
           ::File.join(new_resource.service_dir, new_resource.service_name)
+        end
+
+        def staging_dir_name
+          ::File.join(new_resource.sv_dir, new_resource.service_name)
         end
 
         def run_script_content
@@ -100,24 +110,24 @@ class Chef
         #
         # Helper Resources
         #
-        def service_dir
-          return @service_dir unless @service_dir.nil?
-          @service_dir = Chef::Resource::Directory.new(service_dir_name, run_context)
-          @service_dir.recursive(true)
-          @service_dir.mode(00755)
-          @service_dir
+        def staging_dir
+          return @staging_dir unless @staging_dir.nil?
+          @staging_dir = Chef::Resource::Directory.new(staging_dir_name, run_context)
+          @staging_dir.recursive(true)
+          @staging_dir.mode(00755)
+          @staging_dir
         end
 
         def down_file
           return @down_file unless @down_file.nil?
-          @down_file = Chef::Resource::File.new(::File.join(service_dir_name, 'down'), run_context)
+          @down_file = Chef::Resource::File.new(::File.join(staging_dir_name, 'down'), run_context)
           @down_file.mode(00755)
           @down_file
         end
           
         def run_script
           return @run_script unless @run_script.nil?
-          @run_script = Chef::Resource::File.new(::File.join(service_dir_name, 'run'), run_context)
+          @run_script = Chef::Resource::File.new(::File.join(staging_dir_name, 'run'), run_context)
           @run_script.content(run_script_content)
           @run_script.mode(00755)
           @run_script
@@ -133,7 +143,7 @@ class Chef
 
         def log_main_dir
           return @log_main_dir unless @log_main_dir.nil?
-          @log_main_dir = Chef::Resource::Directory.new(::File.join(service_dir_name, 'log'), run_context)
+          @log_main_dir = Chef::Resource::Directory.new(::File.join(staging_dir_name, 'log'), run_context)
           @log_main_dir.recursive(true)
           @log_main_dir.mode(00755)
           @log_main_dir
@@ -141,12 +151,18 @@ class Chef
 
         def log_run_script
           return @log_run_script unless @log_run_script.nil?
-          @log_run_script = Chef::Resource::File.new(::File.join(service_dir_name, 'log', 'run'), run_context)
+          @log_run_script = Chef::Resource::File.new(::File.join(staging_dir_name, 'log', 'run'), run_context)
           @log_run_script.content(log_run_script_content)
           @log_run_script.mode(00755)
           @log_run_script
         end
-        
+
+        def service_dir_link
+          return @service_dir_link unless @service_dir_link.nil?
+          @service_dir_link = Chef::Resource::Link.new(::File.join(service_dir_name), run_context)
+          @service_dir_link.to(staging_dir_name)
+          @service_dir_link
+        end
       end
     end
   end
