@@ -121,7 +121,7 @@ module ChefInit
     ##
     # Launch build
     #
-    def launch_build
+    def launch_provision
       supervisor = launch_supervisor
 
       wait_for_supervisor
