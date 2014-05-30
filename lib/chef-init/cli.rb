@@ -1,7 +1,7 @@
 require 'chef-init/version'
 require 'chef-init/helpers'
 require 'mixlib/cli'
-require 'open3'
+require 'pty'
 
 module ChefInit
   class CLI
@@ -169,18 +169,16 @@ module ChefInit
     end
 
     def run_chef_client 
-      r, w = IO.pipe
-      pid = fork {
-        #child
-        $stdout.reopen w
-        r.close
-        exec(chef_client_command)
-      }
-      w.close
-      r.each do |line|
-        puts line
+      PTY.spawn chef_client_command do |r,w,pid|
+        begin
+          r.sync
+          r.each_line { |l| puts l }
+        rescue Errno::EIO
+        else
+        ensure
+          ::Process.wait(pid)
+        end
       end
-      Process.wait(pid)
     end
 
     def path
