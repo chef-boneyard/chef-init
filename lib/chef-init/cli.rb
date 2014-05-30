@@ -110,7 +110,7 @@ module ChefInit
 
       ChefInit::Log.info("Starting Supervisor...")
       @supervisor = launch_supervisor
-      ChefInit::Log.info("Supervisor Process ID: #{@supervisor}")
+      ChefInit::Log.info("Supervisor pid: #{@supervisor}")
 
       ChefInit::Log.info("Waiting for Supervisor to start...")
       wait_for_supervisor
@@ -131,8 +131,8 @@ module ChefInit
       end
 
       # Wait for supervisor to quit
-      _pid, status = Process.wait2(@supervisor)
-      exit status.exitstatus
+      Process.wait(@supervisor)
+      exit 0
     end
     
     ##
@@ -143,7 +143,7 @@ module ChefInit
 
       ChefInit::Log.info("Starting Supervisor...")
       @supervisor = launch_supervisor
-      ChefInit::Log.info("Supervisor Process ID: #{@supervisor}")
+      ChefInit::Log.info("Supervisor pid: #{@supervisor}")
 
       ChefInit::Log.info("Waiting for Supervisor to start...")
       wait_for_supervisor
