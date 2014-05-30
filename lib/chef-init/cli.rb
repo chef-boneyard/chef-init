@@ -27,8 +27,8 @@ module ChefInit
       :description => "Point chef-client at local repository",
       :boolean => true
 
-    option :provision,
-      :long => "--provision",
+    option :bootstrap,
+      :long => "--bootstrap",
       :description => "",
       :boolean => true,
       :default => false
@@ -38,6 +38,12 @@ module ChefInit
       :description => "",
       :boolean => true,
       :default => false
+
+    option :log_level,
+      :short        => "-l LEVEL",
+      :long         => "--log_level LEVEL",
+      :description  => "Set the log level (debug, info, warn, error, fatal)",
+      :default      => "info"
 
     def initialize(argv, max_retries=5)
       @argv = argv
@@ -50,8 +56,8 @@ module ChefInit
 
       if config[:onboot]
         launch_onboot
-      elsif config[:provision]
-        launch_provision
+      elsif config[:bootstrap]
+        launch_bootstrap
       end
     end
 
@@ -62,13 +68,13 @@ module ChefInit
       parse_options(argv)
       set_default_options
 
-      unless config[:onboot] || config[:provision]
-        err "You must pass in either the --onboot OR the --provision flag."
+      unless config[:onboot] || config[:bootstrap]
+        err "You must pass in either the --onboot OR the --bootstrap flag."
         exit 1
       end
 
-      if config[:onboot] && config[:provision]
-        err "You must pass in either the --onboot OR --provision flag, but not both." 
+      if config[:onboot] && config[:bootstrap]
+        err "You must pass in either the --onboot OR --bootstrap flag, but not both." 
         exit 1
       end
     end
@@ -120,9 +126,9 @@ module ChefInit
     end
     
     ##
-    # Launch build
+    # Launch bootstrap
     #
-    def launch_provision
+    def launch_bootstrap
       supervisor = launch_supervisor
 
       wait_for_supervisor
@@ -153,9 +159,9 @@ module ChefInit
 
     def chef_client_command
       if config[:local_mode]
-        "chef-client -c #{config[:config_file]} -j #{config[:json_attribs]} -z"
+        "chef-client -c #{config[:config_file]} -j #{config[:json_attribs]} -z -l #{config[:log_level]}"
       else
-        "chef-client -c #{config[:config_file]} -j #{config[:json_attribs]}"
+        "chef-client -c #{config[:config_file]} -j #{config[:json_attribs]} -l #{config[:log_level]}"
       end
     end
   end
