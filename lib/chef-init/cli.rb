@@ -126,7 +126,7 @@ module ChefInit
 
       wait_for_supervisor
 
-      launch_chef_client
+      run_chef_client
 
       Process.kill("TERM", supervisor)
       exit 0
