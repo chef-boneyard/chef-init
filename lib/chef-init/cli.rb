@@ -103,20 +103,25 @@ module ChefInit
     # Launch onboot
     #
     def launch_onboot
-
+      print_welcome
+      notify_supervisor_launch
       supervisor = launch_supervisor
 
+      notify_supervisor_wait
       wait_for_supervisor
 
+      notify_chef_client
       run_chef_client
 
       # Catch TERM signal and foward to supervisor
       Signal.trap("TERM") do
+        notify_term
         Process.kill("TERM", supervisor)
       end
 
       # Catch HUP signal and forward to supervisor
       Signal.trap("HUP") do
+        notify_hup
         Process.kill("HUP", supervisor)
       end
 
@@ -129,10 +134,14 @@ module ChefInit
     # Launch bootstrap
     #
     def launch_bootstrap
+      print_welcome
+      notify_supervisor_launch
       supervisor = launch_supervisor
 
+      notify_supervisor_wait
       wait_for_supervisor
 
+      notify_chef_client
       run_chef_client
 
       Process.kill("TERM", supervisor)
@@ -167,6 +176,60 @@ module ChefInit
       else
         "chef-client -c #{config[:config_file]} -j #{config[:json_attribs]} -l #{config[:log_level]}"
       end
+    end
+
+    ##
+    # Logging
+    #
+    def print_welcome
+      puts <<-eos
+
+#################################
+# Welcome to Chef Container
+#################################
+
+
+      eos
+    end
+
+    def notify_supervisor_launch
+      puts <<-eos
+
+Starting Supervisor...
+
+      eos
+    end
+
+    def notify_supervisor_wait
+      puts <<-eos
+
+Waiting for Supervisor to start..
+
+      eos
+    end
+
+    def notify_chef_client
+      puts <<-eos
+
+Starting Chef-Client Run...
+
+      eos
+    end
+
+    def notify_term
+      puts <<-eos
+
+Received SIGTERM - shutting down supervisor...
+
+      eos
+    end
+
+    def notify_hup
+      puts <<-eos
+
+Received SIGHUP - shutting down supervisor...
+
+      eos
     end
   end
 end
