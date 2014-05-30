@@ -108,14 +108,14 @@ module ChefInit
     def launch_onboot
       print_welcome
 
-      ChefInit::Log.debug("Starting Supervisor...")
+      ChefInit::Log.info("Starting Supervisor...")
       @supervisor = launch_supervisor
-      ChefInit::Log.debug("Supervisor Process ID: #{@supervisor}")
+      ChefInit::Log.info("Supervisor Process ID: #{@supervisor}")
 
-      ChefInit::Log.debug("Waiting for Supervisor to start...")
+      ChefInit::Log.info("Waiting for Supervisor to start...")
       wait_for_supervisor
 
-      ChefInit::Log.debug("Starting chef-client run...")
+      ChefInit::Log.info("Starting chef-client run...")
       run_chef_client
 
       # Catch TERM signal and foward to supervisor
