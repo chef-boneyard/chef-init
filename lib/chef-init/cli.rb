@@ -170,7 +170,7 @@ module ChefInit
     end
 
     def run_chef_client 
-      Open3.popen2e({PATH => path}, chef_client_command) do |stdin, stdout_err, wait_thr|
+      Open3.popen2e({"PATH" => path}, chef_client_command) do |stdin, stdout_err, wait_thr|
         while line = stdout_err.gets
           puts line
         end
