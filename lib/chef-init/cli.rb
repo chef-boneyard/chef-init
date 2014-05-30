@@ -169,11 +169,18 @@ module ChefInit
     end
 
     def run_chef_client 
-      ::Open3.popen2e({"PATH" => path}, chef_client_command) do |_i,oe,_t|
-        while line = oe.gets
-          puts line
-        end
+      r, w = IO.pipe
+      pid = fork {
+        #child
+        $stdout.reopen w
+        r.close
+        exec(chef_client_command)
+      }
+      w.close
+      r.each do |line|
+        puts line
       end
+      Process.wait(pid)
     end
 
     def path
