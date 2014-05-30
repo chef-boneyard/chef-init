@@ -1,6 +1,6 @@
 require 'mixlib/log'
 
-class ChefInit
+module ChefInit
   class Log
     extend Mixlib::Log
   end
