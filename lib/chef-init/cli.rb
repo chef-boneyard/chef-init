@@ -140,7 +140,7 @@ module ChefInit
     end
 
     def launch_supervisor
-      Process.spawn(supervisor_launch_command)
+      Process.spawn({"PATH" => path}, supervisor_launch_command)
     end
 
     def wait_for_supervisor
@@ -152,9 +152,13 @@ module ChefInit
     end
 
     def run_chef_client 
-      ::Open3.popen2e(chef_client_command) do |_i,oe,_t|
+      ::Open3.popen2e({"PATH" => path}, chef_client_command) do |_i,oe,_t|
         oe.each { |line| puts line }
       end
+    end
+
+    def path
+      "#{omnibus_root}/bin:#{omnibus_root}/embedded/bin:/usr/local/bin:/usr/local/sbin:/bin:/sbin:/usr/bin:/usr/sbin"
     end
 
     def chef_client_command
