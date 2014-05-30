@@ -1,6 +1,7 @@
 require 'chef-init/version'
 require 'chef-init/helpers'
 require 'mixlib/cli'
+require 'open3'
 
 module ChefInit
   class CLI
@@ -145,7 +146,7 @@ module ChefInit
     end
 
     def run_chef_client 
-      Open3.popen2e(chef_client_command) do |_i,oe,_t|
+      ::Open3.popen2e(chef_client_command) do |_i,oe,_t|
         oe.each { |line| puts line }
       end
     end
