@@ -118,8 +118,6 @@ module ChefInit
       ChefInit::Log.info("Starting chef-client run...")
       run_chef_client
 
-      ChefInit::Log.info("Waiting for Supervisor to exit...")
-
       # Catch TERM signal and foward to supervisor
       Signal.trap("TERM") do
         ChefInit::Log.info("Received SIGTERM - shutting down supervisor...\n\nGoodbye!")
@@ -133,6 +131,7 @@ module ChefInit
       end
 
       # Wait for supervisor to quit
+      ChefInit::Log.info("Waiting for Supervisor to exit...")
       Process.wait(@supervisor)
       exit 0
     end
@@ -171,7 +170,9 @@ module ChefInit
 
     def run_chef_client 
       ::Open3.popen2e({"PATH" => path}, chef_client_command) do |_i,oe,_t|
-        oe.each { |line| puts line }
+        while line = oe.gets
+          puts line
+        end
       end
     end
 
