@@ -10,6 +10,7 @@ module ChefInit
 
     attr_reader :argv
     attr_reader :max_retries
+    attr_reader :supervisor
 
     option :config_file,
       :short => "-c CONFIG",
@@ -107,29 +108,30 @@ module ChefInit
     def launch_onboot
       print_welcome
 
-      ChefInit::Log.info("Starting Supervisor...")
-      supervisor = launch_supervisor
+      ChefInit::Log.debug("Starting Supervisor...")
+      @supervisor = launch_supervisor
+      ChefInit::Log.debug("Supervisor Process ID: #{@supervisor}")
 
-      ChefInit::Log.info("Waiting for Supervisor to start...")
+      ChefInit::Log.debug("Waiting for Supervisor to start...")
       wait_for_supervisor
 
-      ChefInit::Log.info("Starting chef-client run...\n")
+      ChefInit::Log.debug("Starting chef-client run...")
       run_chef_client
 
       # Catch TERM signal and foward to supervisor
       Signal.trap("TERM") do
-        ChefInit::Log.info("Received SIGTERM - shutting down supervisor...")
-        Process.kill("TERM", supervisor)
+        ChefInit::Log.info("\n\nReceived SIGTERM - shutting down supervisor...Goodbye!")
+        Process.kill("TERM", @supervisor)
       end
 
       # Catch HUP signal and forward to supervisor
       Signal.trap("HUP") do
-        ChefInit::Log.info("Received SIGHUP - shutting down supervisor...")
-        Process.kill("HUP", supervisor)
+        ChefInit::Log.info("\n\nReceived SIGHUP - shutting down supervisor...Goodbye!")
+        Process.kill("HUP", @supervisor)
       end
 
       # Wait for supervisor to quit
-      Process.wait(supervisor)
+      Process.wait(@supervisor)
       exit $?.exitstatus
     end
     
@@ -140,7 +142,7 @@ module ChefInit
       print_welcome
 
       ChefInit::Log.info("Starting Supervisor...")
-      supervisor = launch_supervisor
+      @supervisor = launch_supervisor
 
       ChefInit::Log.info("Waiting for Supervisor to start...")
       wait_for_supervisor
@@ -148,7 +150,7 @@ module ChefInit
       ChefInit::Log.info("Starting chef-client run...\n")
       run_chef_client
 
-      Process.kill("TERM", supervisor)
+      Process.kill("TERM", @supervisor)
       exit 0
     end
 
@@ -186,12 +188,11 @@ module ChefInit
     # Logging
     #
     def print_welcome
-      ChefInit::Log.info <<-eos
+      puts <<-eos
 
 #################################
 # Welcome to Chef Container
 #################################
-
       eos
     end
   end
