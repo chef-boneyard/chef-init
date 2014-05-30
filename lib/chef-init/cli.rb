@@ -120,19 +120,19 @@ module ChefInit
 
       # Catch TERM signal and foward to supervisor
       Signal.trap("TERM") do
-        ChefInit::Log.info("\n\nReceived SIGTERM - shutting down supervisor...Goodbye!")
+        ChefInit::Log.info("Received SIGTERM - shutting down supervisor...\n\nGoodbye!")
         Process.kill("TERM", @supervisor)
       end
 
       # Catch HUP signal and forward to supervisor
       Signal.trap("HUP") do
-        ChefInit::Log.info("\n\nReceived SIGHUP - shutting down supervisor...Goodbye!")
+        ChefInit::Log.info("Received SIGHUP - shutting down supervisor...\n\nGoodbye!")
         Process.kill("HUP", @supervisor)
       end
 
       # Wait for supervisor to quit
-      Process.wait(@supervisor)
-      exit $?.exitstatus
+      _pid, status = Process.wait2(@supervisor)
+      exit status.exitstatus
     end
     
     ##
@@ -143,6 +143,7 @@ module ChefInit
 
       ChefInit::Log.info("Starting Supervisor...")
       @supervisor = launch_supervisor
+      ChefInit::Log.info("Supervisor Process ID: #{@supervisor}")
 
       ChefInit::Log.info("Waiting for Supervisor to start...")
       wait_for_supervisor
@@ -193,6 +194,7 @@ module ChefInit
 #################################
 # Welcome to Chef Container
 #################################
+
       eos
     end
   end
