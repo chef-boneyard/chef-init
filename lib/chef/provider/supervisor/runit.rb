@@ -84,18 +84,6 @@ class Chef
 
           Chef::Log.debug("Linking staging directory to service directory for #{new_resource.service_name}")
           service_dir_link.run_action(:create)
-
-          Chef::Log.debug("waiting until named pipe #{service_dir_name}/supervise/ok exists")
-          until ::FileTest.pipe?("#{service_dir_name}/supervise/ok")
-            sleep 1
-            Chef::Log.debug(".")
-          end
-
-          Chef::Log.debug("waiting until named pipe #{service_dir_name}/log/supervise/ok exists")
-          until ::FileTest.pipe?("#{service_dir_name}/log/supervise/ok")
-            sleep 1
-            Chef::Log.debug(".")
-          end
         end
 
         private
