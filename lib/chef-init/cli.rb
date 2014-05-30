@@ -77,6 +77,8 @@ module ChefInit
         err "You must pass in either the --onboot OR --bootstrap flag, but not both." 
         exit 1
       end
+
+      ChefInit::Log.level = config[:log_level].to_sym
     end
 
     def set_default_options
