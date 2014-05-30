@@ -104,24 +104,25 @@ module ChefInit
     #
     def launch_onboot
       print_welcome
-      notify_supervisor_launch
+
+      ChefInit::Log.info("Starting Supervisor...")
       supervisor = launch_supervisor
 
-      notify_supervisor_wait
+      ChefInit::Log.info("Waiting for Supervisor to start...")
       wait_for_supervisor
 
-      notify_chef_client
+      ChefInit::Log.info("Starting chef-client run...\n")
       run_chef_client
 
       # Catch TERM signal and foward to supervisor
       Signal.trap("TERM") do
-        notify_term
+        ChefInit::Log.info("Received SIGTERM - shutting down supervisor...")
         Process.kill("TERM", supervisor)
       end
 
       # Catch HUP signal and forward to supervisor
       Signal.trap("HUP") do
-        notify_hup
+        ChefInit::Log.info("Received SIGHUP - shutting down supervisor...")
         Process.kill("HUP", supervisor)
       end
 
@@ -135,13 +136,14 @@ module ChefInit
     #
     def launch_bootstrap
       print_welcome
-      notify_supervisor_launch
+
+      ChefInit::Log.info("Starting Supervisor...")
       supervisor = launch_supervisor
 
-      notify_supervisor_wait
+      ChefInit::Log.info("Waiting for Supervisor to start...")
       wait_for_supervisor
 
-      notify_chef_client
+      ChefInit::Log.info("Starting chef-client run...\n")
       run_chef_client
 
       Process.kill("TERM", supervisor)
@@ -182,52 +184,11 @@ module ChefInit
     # Logging
     #
     def print_welcome
-      puts <<-eos
+      ChefInit::Log.info <<-eos
 
 #################################
 # Welcome to Chef Container
 #################################
-
-
-      eos
-    end
-
-    def notify_supervisor_launch
-      puts <<-eos
-
-Starting Supervisor...
-
-      eos
-    end
-
-    def notify_supervisor_wait
-      puts <<-eos
-
-Waiting for Supervisor to start..
-
-      eos
-    end
-
-    def notify_chef_client
-      puts <<-eos
-
-Starting Chef-Client Run...
-
-      eos
-    end
-
-    def notify_term
-      puts <<-eos
-
-Received SIGTERM - shutting down supervisor...
-
-      eos
-    end
-
-    def notify_hup
-      puts <<-eos
-
-Received SIGHUP - shutting down supervisor...
 
       eos
     end
