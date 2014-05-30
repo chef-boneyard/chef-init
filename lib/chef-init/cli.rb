@@ -131,6 +131,7 @@ module ChefInit
       end
 
       # Wait for supervisor to quit
+      ChefInit::Log.info("Waiting for Supervisor to exit...")
       Process.wait(@supervisor)
       exit 0
     end
