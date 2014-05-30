@@ -16,6 +16,7 @@
 #
 
 require 'mixlib/shellout'
+require 'chef-init/log'
 require 'chef-init/exceptions'
 
 module ChefInit

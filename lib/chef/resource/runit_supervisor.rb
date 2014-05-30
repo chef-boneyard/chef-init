@@ -30,6 +30,7 @@ class Chef
         @command = nil
         @sv_bin = '/opt/chef/embedded/bin/sv'
         @service_dir = '/opt/chef/service'
+        @sv_dir = '/opt/chef/sv'
       end
 
       def service_name(arg=nil)
@@ -59,6 +60,14 @@ class Chef
       def service_dir(arg=nil)
         set_or_return(
           :service_dir,
+          arg,
+          :kind_of => [ String ]
+        )
+      end
+
+      def sv_dir(arg=nil)
+        set_or_return(
+          :sv_dir,
           arg,
           :kind_of => [ String ]
         )

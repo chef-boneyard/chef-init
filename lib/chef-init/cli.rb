@@ -1,6 +1,7 @@
 require 'chef-init/version'
 require 'chef-init/helpers'
 require 'mixlib/cli'
+require 'open3'
 
 module ChefInit
   class CLI
@@ -9,6 +10,8 @@ module ChefInit
 
     attr_reader :argv
     attr_reader :max_retries
+    attr_reader :supervisor
+    attr_reader :chef_client
 
     option :config_file,
       :short => "-c CONFIG",
@@ -26,11 +29,23 @@ module ChefInit
       :description => "Point chef-client at local repository",
       :boolean => true
 
-    option :build,
-      :long => "--build",
-      :description => "Gracefully kill process supervisor after successful chef-client run",
+    option :bootstrap,
+      :long => "--bootstrap",
+      :description => "",
       :boolean => true,
       :default => false
+
+    option :onboot,
+      :long => "--onboot",
+      :description => "",
+      :boolean => true,
+      :default => false
+
+    option :log_level,
+      :short        => "-l LEVEL",
+      :long         => "--log_level LEVEL",
+      :description  => "Set the log level (debug, info, warn, error, fatal)",
+      :default      => "info"
 
     def initialize(argv, max_retries=5)
       @argv = argv
@@ -40,85 +55,152 @@ module ChefInit
 
     def run
       handle_options
-      parent_pid = Process.pid
 
-      fork do
-        wait_for_runit
-        run_chef_client
-        Process.kill("HUP", parent_pid) if config[:build]
+      if config[:onboot]
+        launch_onboot
+      elsif config[:bootstrap]
+        launch_bootstrap
       end
-
-      launch_runsvdir
     end
 
-    #
+    ##
     # Configuration Methods
     #
     def handle_options
       parse_options(argv)
       set_default_options
+
+      unless config[:onboot] || config[:bootstrap]
+        err "You must pass in either the --onboot OR the --bootstrap flag."
+        exit 1
+      end
+
+      if config[:onboot] && config[:bootstrap]
+        err "You must pass in either the --onboot OR --bootstrap flag, but not both." 
+        exit 1
+      end
+
+      ChefInit::Log.level = config[:log_level].to_sym
     end
 
     def set_default_options
-      if config[:local_mode]
+      if ::File.exist?("/chef/zero.rb")
         set_local_mode_defaults
-      else
+      elsif ::File.exist?("/etc/chef/client.rb")
         set_server_mode_defaults
       end
     end
 
     def set_local_mode_defaults
+      config[:local_mode] ||= true
       config[:config_file] ||= "/chef/zero.rb"
       config[:json_attribs] ||= "/chef/first-boot.json"
     end
 
     def set_server_mode_defaults
+      config[:local_mode] ||= false
       config[:config_file] ||= "/etc/chef/client.rb"
       config[:json_attribs] ||= "/etc/chef/first-boot.json"
     end
 
+    ##
+    # Launch onboot
     #
-    # Runit Methods
+    def launch_onboot
+      print_welcome
+
+      ChefInit::Log.info("Starting Supervisor...")
+      @supervisor = launch_supervisor
+      ChefInit::Log.info("Supervisor pid: #{@supervisor}")
+
+      ChefInit::Log.info("Waiting for Supervisor to start...")
+      wait_for_supervisor
+
+      ChefInit::Log.info("Starting chef-client run...")
+      @chef_client = run_chef_client
+
+      # Catch TERM signal and foward to supervisor
+      Signal.trap("TERM") do
+        ChefInit::Log.info("Received SIGTERM - shutting down supervisor...\n\nGoodbye!")
+        Process.kill("TERM", @supervisor)
+      end
+
+      # Catch HUP signal and forward to supervisor
+      Signal.trap("HUP") do
+        ChefInit::Log.info("Received SIGHUP - shutting down supervisor...\n\nGoodbye!")
+        Process.kill("HUP", @supervisor)
+      end
+
+      # Wait for supervisor to quit
+      ChefInit::Log.info("Waiting for Supervisor to exit...")
+      Process.wait(@supervisor)
+      exit 0
+    end
+    
+    ##
+    # Launch bootstrap
     #
-    def wait_for_runit
-      tries = 0
-      begin 
-        tries += 1
-        supervisor_running?("runsvdi[r]")
-      rescue ChefInit::Exceptions::ProcessSupervisorNotRunning
-        if (tries < @max_retries)
-          sleep(2**tries)
-          retry
-        else
-          exit 1
+    def launch_bootstrap
+      print_welcome
+
+      ChefInit::Log.info("Starting Supervisor...")
+      @supervisor = launch_supervisor
+      ChefInit::Log.info("Supervisor pid: #{@supervisor}")
+
+      ChefInit::Log.info("Waiting for Supervisor to start...")
+      wait_for_supervisor
+
+      ChefInit::Log.info("Starting chef-client run...\n")
+      run_chef_client
+
+      Process.kill("TERM", @supervisor)
+      exit 0
+    end
+
+    def launch_supervisor
+      Process.spawn({"PATH" => path}, supervisor_launch_command)
+    end
+
+    def wait_for_supervisor
+      sleep 1
+    end
+
+    def supervisor_launch_command
+      "#{omnibus_embedded_bin_dir}/runsvdir -P #{omnibus_root}/service 'log: #{ '.' * 395}'"
+    end
+
+    def run_chef_client 
+      Open3.popen2e({"PATH" => path}, chef_client_command) do |stdin, stdout_err, wait_thr|
+        while line = stdout_err.gets
+          puts line
         end
+        wait_thr.value
       end
     end
 
-    def launch_runsvdir
-      exec("#{omnibus_embedded_bin_dir}/runsvdir -P #{omnibus_root}/service 'log: #{ '.' * 395}'")
+    def path
+      "#{omnibus_root}/bin:#{omnibus_root}/embedded/bin:/usr/local/bin:/usr/local/sbin:/bin:/sbin:/usr/bin:/usr/sbin"
     end
 
-    #
-    # Chef Methods
-    #
-    def run_chef_client
+    def chef_client_command
       if config[:local_mode]
-        system_command("chef-client -c #{config[:config_file]} -j #{config[:json_attribs]} -z")
+        "chef-client -c #{config[:config_file]} -j #{config[:json_attribs]} -z -l #{config[:log_level]}"
       else
-        system_command("chef-client -c #{config[:config_file]} -j #{config[:json_attribs]}")
+        "chef-client -c #{config[:config_file]} -j #{config[:json_attribs]} -l #{config[:log_level]}"
       end
     end
 
-    # The last character in the process_name should have brackets around it
-    # so that it doesn't find the grep process itself. 
+    ##
+    # Logging
     #
-    # example: runsvdi[r]
-    def supervisor_running?(process_name) 
-      cmd = system_command("ps aux | grep #{process_name}")
-      running = (cmd.stdout =~ /runsvdir/ && cmd.exitstatus == 0)
-      raise ChefInit::Exceptions::ProcessSupervisorNotRunning unless running
-      running
+    def print_welcome
+      puts <<-eos
+
+#################################
+# Welcome to Chef Container
+#################################
+
+      eos
     end
   end
 end
