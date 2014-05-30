@@ -1,7 +1,7 @@
 require 'chef-init/version'
 require 'chef-init/helpers'
 require 'mixlib/cli'
-require 'pty'
+require 'open3'
 
 module ChefInit
   class CLI
@@ -11,6 +11,7 @@ module ChefInit
     attr_reader :argv
     attr_reader :max_retries
     attr_reader :supervisor
+    attr_reader :chef_client
 
     option :config_file,
       :short => "-c CONFIG",
@@ -116,7 +117,7 @@ module ChefInit
       wait_for_supervisor
 
       ChefInit::Log.info("Starting chef-client run...")
-      run_chef_client
+      @chef_client = run_chef_client
 
       # Catch TERM signal and foward to supervisor
       Signal.trap("TERM") do
@@ -169,15 +170,11 @@ module ChefInit
     end
 
     def run_chef_client 
-      PTY.spawn chef_client_command do |r,w,pid|
-        begin
-          r.sync
-          r.each_line { |l| puts l }
-        rescue Errno::EIO
-        else
-        ensure
-          ::Process.wait(pid)
+      Open3.popen2e({PATH => path}, chef_client_command) do |stdin, stdout_err, wait_thr|
+        while line = stdout_err.gets
+          puts line
         end
+        wait_thr.value
       end
     end
 
