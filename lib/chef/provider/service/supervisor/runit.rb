@@ -83,7 +83,7 @@ class Chef
           end
 
           def enabled?
-            ::File.exists?(::File.join(service_dir_name, 'run'))
+            !::File.exists?(::File.join(service_dir_name, 'down'))
           end
 
           def wait_for_service_enable
@@ -101,11 +101,11 @@ class Chef
           end
 
           def omnibus_root
-            '/opt/chef/'
+            '/opt/chef'
           end
 
           def omnibus_embedded_bin_dir
-            "#{omnibus_root}/embedded/bin"
+            ::File.join(omnibus_root, "embedded", "bin")
           end
 
           def service_dir_name 
