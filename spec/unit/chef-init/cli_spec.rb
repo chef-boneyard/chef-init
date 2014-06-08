@@ -94,6 +94,17 @@ describe ChefInit::CLI do
       end
     end
 
+    context "version is requested" do
+      let(:argv) { %w[ -v ] }
+      let(:version_message) { "ChefInit Version: #{ChefInit::VERSION}\n" }
+
+      it "should return the version number and then quit" do
+        expect(cli).to receive(:exit).with(0)
+        cli.handle_options
+        expect(stdout).to eql(version_message)
+      end
+    end
+
     context "given no arguments or options" do
       let(:argv) { [] }
       it "alerts that you must pass in a flag" do

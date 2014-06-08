@@ -76,6 +76,11 @@ module ChefInit
       :description  => "Set the log level (debug, info, warn, error, fatal)",
       :default      => "info"
 
+    option :version, 
+      :short        => "-v",
+      :long         => "--version",
+      :boolean      => true
+
     def initialize(argv, max_retries=5)
       @argv = argv
       @max_retries = max_retries
@@ -99,17 +104,22 @@ module ChefInit
       parse_options(@argv)
       set_default_options
 
-      unless config[:onboot] || config[:bootstrap]
-        err "You must pass in either the --onboot OR the --bootstrap flag."
-        exit 1
-      end
+      if config[:version]
+        msg "ChefInit Version: #{ChefInit::VERSION}"
+        exit 0
+      else
+        unless config[:onboot] || config[:bootstrap]
+          err "You must pass in either the --onboot OR the --bootstrap flag."
+          exit 1
+        end
 
-      if config[:onboot] && config[:bootstrap]
-        err "You must pass in either the --onboot OR the --bootstrap flag, but not both." 
-        exit 1
-      end
+        if config[:onboot] && config[:bootstrap]
+          err "You must pass in either the --onboot OR the --bootstrap flag, but not both." 
+          exit 1
+        end
 
-      ChefInit::Log.level = config[:log_level].to_sym
+        ChefInit::Log.level = config[:log_level].to_sym
+      end
     end
 
     def set_default_options

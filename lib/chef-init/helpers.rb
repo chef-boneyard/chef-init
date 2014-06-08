@@ -48,6 +48,10 @@ module ChefInit
       $stderr
     end
 
+    def exit(n)
+      Kernel.exit(n)
+    end
+    
     #
     # Locates the omnibus directories
     #
