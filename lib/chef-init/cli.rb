@@ -14,32 +14,32 @@ module ChefInit
     attr_reader :chef_client
 
     option :config_file,
-      :short => "-c CONFIG",
-      :long => "--config",
-      :description => "The configuration file to use"
+      :short        => "-c CONFIG",
+      :long         => "--config",
+      :description  => "The configuration file to use"
 
     option :json_attribs,
-      :short => "-j JSON_ATTRIBS",
-      :long => "--json-attributes",
-      :description => "Load attributes from a JSON file or URL"
+      :short        => "-j JSON_ATTRIBS",
+      :long         => "--json-attributes",
+      :description  => "Load attributes from a JSON file or URL"
 
     option :local_mode,
-      :short => "-z",
-      :long => "--local-mode",
-      :description => "Point chef-client at local repository",
-      :boolean => true
+      :short        => "-z",
+      :long         => "--local-mode",
+      :description  => "Point chef-client at local repository",
+      :boolean      => true
 
     option :bootstrap,
-      :long => "--bootstrap",
-      :description => "",
-      :boolean => true,
-      :default => false
+      :long         => "--bootstrap",
+      :description  => "",
+      :boolean      => true,
+      :default      => false
 
     option :onboot,
-      :long => "--onboot",
-      :description => "",
-      :boolean => true,
-      :default => false
+      :long         => "--onboot",
+      :description  => "",
+      :boolean      => true,
+      :default      => false
 
     option :log_level,
       :short        => "-l LEVEL",
@@ -67,7 +67,7 @@ module ChefInit
     # Configuration Methods
     #
     def handle_options
-      parse_options(argv)
+      parse_options(@argv)
       set_default_options
 
       unless config[:onboot] || config[:bootstrap]
@@ -76,7 +76,7 @@ module ChefInit
       end
 
       if config[:onboot] && config[:bootstrap]
-        err "You must pass in either the --onboot OR --bootstrap flag, but not both." 
+        err "You must pass in either the --onboot OR the --bootstrap flag, but not both." 
         exit 1
       end
 

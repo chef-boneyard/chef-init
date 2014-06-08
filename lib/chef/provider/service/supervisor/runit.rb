@@ -119,6 +119,7 @@ class Chef
           def down_file
             return @down_file unless @down_file.nil?
             @down_file = Chef::Resource::File.new(::File.join(service_dir_name, 'down'), run_context)
+            @down_file.backup(false)
             @down_file
           end
         end

@@ -61,5 +61,5 @@ describe Chef::Provider::Supervisor::Runit do
       expect{ @provider.instance_eval{ @log_run_script }}.to_not eql(nil)
     end
   end
-  
+
 end
