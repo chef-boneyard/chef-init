@@ -131,6 +131,9 @@ class Chef
           !::File.exists?(::File.join(service_dir_name, 'down'))
         end
 
+        ##
+        # General Helpers Methods
+        #
         def wait_for_service_enable
           Chef::Log.debug("waiting until named pipe #{service_dir_name}/supervise/ok exists.")
           until ::FileTest.pipe?("#{service_dir_name}/supervise/ok")
@@ -145,9 +148,6 @@ class Chef
           end
         end
 
-        ##
-        # General Helpers Methods
-        #
         def service_dir_name 
           ::File.join(omnibus_root, "service", new_resource.service_name)
         end
