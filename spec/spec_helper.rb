@@ -19,7 +19,7 @@ require 'simplecov'
 SimpleCov.start do
   add_filter '/spec/'
   add_group 'ChefInit', 'lib/chef-init/'
-  add_group 'Chef DSL', 'lib/chef/'
+  add_group 'Chef', 'lib/chef/'
 end
 
 require 'chef'
