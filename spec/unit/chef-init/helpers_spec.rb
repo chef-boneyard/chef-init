@@ -8,10 +8,28 @@ describe ChefInit::Helpers do
   let(:stdout_io) { StringIO.new }
   let(:stderr_io) { StringIO.new }
 
-
-
   describe ".system_command" do
-    
+    before do
+     @klass = FakeClass.new
+     Mixlib::ShellOut.stub(:new).with("true").and_return(cmd)
+    end
+
+    let(:cmd) { double("ShellOut Object", run_command: nil)}
+
+    it "should create Mixlib::ShellOut object" do
+      expect(Mixlib::ShellOut).to receive(:new).and_return(cmd)
+      @klass.system_command("true")
+    end
+
+    it "should run the command" do
+      expect(cmd).to receive(:run_command)
+      @klass.system_command("true")
+    end
+
+    it "should return the ShellOut object" do
+      obj = @klass.system_command("true")
+      expect(obj).to eql(cmd)
+    end
   end
 
   describe ".err" do
@@ -24,5 +42,44 @@ describe ChefInit::Helpers do
       @klass.err "test"
       expect(stderr_io.string).to eql("test\n")
     end
+  end
+
+  describe ".msg" do
+    before do
+      @klass = FakeClass.new
+      @klass.stub(:stdout).and_return(stdout_io)  
+    end
+
+    it "should print message to stdout" do
+      @klass.msg "test"
+      expect(stdout_io.string).to eql("test\n")
+    end
+  end
+
+  describe ".omnibus_root" do
+    before do 
+      @klass = FakeClass.new
+    end
+
+    subject { @klass.omnibus_root }
+    it { should eql "/opt/chef" }
+  end
+
+  describe ".omnibus_bin_dir" do
+    before do
+      @klass = FakeClass.new
+    end
+
+    subject { @klass.omnibus_bin_dir }
+    it { should eql "/opt/chef/bin" }
+  end
+
+  describe ".omnibus_embedded_bin_dir" do
+    before do
+      @klass = FakeClass.new
+    end
+
+    subject { @klass.omnibus_embedded_bin_dir }
+    it { should eql "/opt/chef/embedded/bin" }
   end
 end

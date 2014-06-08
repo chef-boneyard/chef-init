@@ -84,7 +84,7 @@ module ChefInit
     end
 
     def set_default_options
-      if ::File.exist?("/chef/zero.rb")
+      if ::File.exist?("/chef/zero.rb") || config[:local_mode]
         set_local_mode_defaults
       elsif ::File.exist?("/etc/chef/client.rb")
         set_server_mode_defaults

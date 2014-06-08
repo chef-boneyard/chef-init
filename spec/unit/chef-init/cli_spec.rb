@@ -329,4 +329,27 @@ describe ChefInit::CLI do
       
     end
   end
+
+  describe "#chef_client_command" do
+    
+    context "chef local-mode" do
+      let(:argv) { ["--bootstrap", "-z"]}
+
+      it "should return local-mode command" do
+        cli.handle_options
+        command = cli.chef_client_command
+        expect(command).to eql("chef-client -c /chef/zero.rb -j /chef/first-boot.json -z -l info")
+      end
+    end
+
+    context "chef server-mode" do
+      let(:argv) { ["--bootstrap"] }
+
+      it "should return server-mode command" do
+        cli.handle_options
+        command = cli.chef_client_command
+        expect(command).to eql("chef-client -c /etc/chef/client.rb -j /etc/chef/first-boot.json -l info")
+      end
+    end
+  end
 end  
