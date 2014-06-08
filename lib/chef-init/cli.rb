@@ -64,6 +64,18 @@ module ChefInit
       :description  => "Set the log level (debug, info, warn, error, fatal)",
       :default      => "info"
 
+    option :onboot,
+      :long => "--onboot",
+      :description => "",
+      :boolean => true,
+      :default => false
+
+    option :log_level,
+      :short        => "-l LEVEL",
+      :long         => "--log_level LEVEL",
+      :description  => "Set the log level (debug, info, warn, error, fatal)",
+      :default      => "info"
+
     def initialize(argv, max_retries=5)
       @argv = argv
       @max_retries = max_retries
