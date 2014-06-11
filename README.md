@@ -1,5 +1,6 @@
 # chef-init
 chef-init is a RubyGem that is distributed with [chef-container] and intended to be used as PID1 inside Linux Containers. 
+[![Gem Version](https://badge.fury.io/rb/chef-init.png)](http://badge.fury.io/rb/chef-init) [![Build Status](https://travis-ci.org/opscode/chef-init.svg?branch=master)](https://travis-ci.org/opscode/chef-init)
 
 It’s primary purpose is to provide an interface with which to safely launch a chef-client run and a process supervisor to manage the services that your Chef recipes create. 
 
