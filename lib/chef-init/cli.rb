@@ -123,7 +123,7 @@ module ChefInit
     end
 
     def set_default_options
-      if ::File.exist?("/chef/zero.rb") || config[:local_mode]
+      if ::File.exist?("/etc/chef/zero.rb") || config[:local_mode]
         set_local_mode_defaults
       elsif ::File.exist?("/etc/chef/client.rb")
         set_server_mode_defaults
@@ -132,8 +132,8 @@ module ChefInit
 
     def set_local_mode_defaults
       config[:local_mode] ||= true
-      config[:config_file] ||= "/chef/zero.rb"
-      config[:json_attribs] ||= "/chef/first-boot.json"
+      config[:config_file] ||= "/etc/chef/zero.rb"
+      config[:json_attribs] ||= "/etc/chef/first-boot.json"
     end
 
     def set_server_mode_defaults
@@ -157,6 +157,10 @@ module ChefInit
 
       ChefInit::Log.info("Starting chef-client run...")
       @chef_client = run_chef_client
+
+      ChefInit::Log.debug("Wait for chef-client to finish, then delete validation key")
+      Process.wait(@chef_client)
+      delete_validation_key
 
       # Catch TERM signal and foward to supervisor
       Signal.trap("TERM") do
@@ -189,8 +193,11 @@ module ChefInit
       ChefInit::Log.info("Waiting for Supervisor to start...")
       wait_for_supervisor
 
-      ChefInit::Log.info("Starting chef-client run...\n")
+      ChefInit::Log.info("Starting chef-client run...")
       run_chef_client
+
+      ChefInit::Log.info("Deleting client key...")
+      delete_client_key
 
       Process.kill("TERM", @supervisor)
       exit 0
@@ -227,6 +234,14 @@ module ChefInit
       else
         "chef-client -c #{config[:config_file]} -j #{config[:json_attribs]} -l #{config[:log_level]}"
       end
+    end
+
+    def delete_client_key
+      File.rm("/etc/chef/client.pem") if File.exists?("/etc/chef/client.pem")
+    end
+
+    def delete_validation_key
+      File.rm("/etc/chef/validation.pem") if File.exists?("/etc/chef/validation.pem")
     end
 
     ##
