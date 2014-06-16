@@ -94,6 +94,8 @@ module ChefInit
         launch_onboot
       elsif config[:bootstrap]
         launch_bootstrap
+      elsif !cli_arguments.nil?
+        exec cli_arguments.join(" ")
       end
     end
 
@@ -108,8 +110,8 @@ module ChefInit
         msg "ChefInit Version: #{ChefInit::VERSION}"
         exit 0
       else
-        unless config[:onboot] || config[:bootstrap]
-          err "You must pass in either the --onboot OR the --bootstrap flag."
+        unless config[:onboot] || config[:bootstrap] || !cli_arguments.empty?
+          err "You must pass in either --onboot, --bootstrap or provide a command to run."
           exit 1
         end
 
