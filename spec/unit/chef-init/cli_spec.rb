@@ -72,19 +72,6 @@ describe ChefInit::CLI do
         cli.run
       end
     end
-
-    context "when no flag is passed but arguments are given" do
-      let(:argv) { %w[ mkdir /opt/chef/sv ] }
-
-      before do
-        cli.stub(:exec)
-      end
-
-      it "should assume those arguments are a command to exec" do
-        expect(cli).to receive(:exec).with("mkdir /opt/chef/sv")
-        cli.run
-      end
-    end
   end
 
   describe "#handle_options" do
@@ -123,7 +110,7 @@ describe ChefInit::CLI do
       it "alerts that you must pass in a flag or arguments" do
         expect(cli).to receive(:exit).with(1)
         cli.handle_options
-        expect(stderr).to eql("You must pass in either --onboot, --bootstrap or provide a command to run.\n")
+        expect(stderr).to eql("You must pass in either the --onboot or --bootstrap flag.\n")
       end
     end
 
