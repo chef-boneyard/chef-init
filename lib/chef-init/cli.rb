@@ -1,3 +1,20 @@
+#
+# Copyright:: Copyright (c) 2012-2014 Chef Software, Inc.
+# License:: Apache License, Version 2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 require 'chef-init/version'
 require 'chef-init/helpers'
 require 'mixlib/cli'
@@ -14,26 +31,38 @@ module ChefInit
     attr_reader :chef_client
 
     option :config_file,
-      :short => "-c CONFIG",
-      :long => "--config",
-      :description => "The configuration file to use"
+      :short        => "-c CONFIG",
+      :long         => "--config",
+      :description  => "The configuration file to use"
 
     option :json_attribs,
-      :short => "-j JSON_ATTRIBS",
-      :long => "--json-attributes",
-      :description => "Load attributes from a JSON file or URL"
+      :short        => "-j JSON_ATTRIBS",
+      :long         => "--json-attributes",
+      :description  => "Load attributes from a JSON file or URL"
 
     option :local_mode,
-      :short => "-z",
-      :long => "--local-mode",
-      :description => "Point chef-client at local repository",
-      :boolean => true
+      :short        => "-z",
+      :long         => "--local-mode",
+      :description  => "Point chef-client at local repository",
+      :boolean      => true
 
     option :bootstrap,
-      :long => "--bootstrap",
-      :description => "",
-      :boolean => true,
-      :default => false
+      :long         => "--bootstrap",
+      :description  => "",
+      :boolean      => true,
+      :default      => false
+
+    option :onboot,
+      :long         => "--onboot",
+      :description  => "",
+      :boolean      => true,
+      :default      => false
+
+    option :log_level,
+      :short        => "-l LEVEL",
+      :long         => "--log_level LEVEL",
+      :description  => "Set the log level (debug, info, warn, error, fatal)",
+      :default      => "info"
 
     option :onboot,
       :long => "--onboot",
@@ -46,6 +75,11 @@ module ChefInit
       :long         => "--log_level LEVEL",
       :description  => "Set the log level (debug, info, warn, error, fatal)",
       :default      => "info"
+
+    option :version, 
+      :short        => "-v",
+      :long         => "--version",
+      :boolean      => true
 
     def initialize(argv, max_retries=5)
       @argv = argv
@@ -67,24 +101,29 @@ module ChefInit
     # Configuration Methods
     #
     def handle_options
-      parse_options(argv)
+      parse_options(@argv)
       set_default_options
 
-      unless config[:onboot] || config[:bootstrap]
-        err "You must pass in either the --onboot OR the --bootstrap flag."
-        exit 1
-      end
+      if config[:version]
+        msg "ChefInit Version: #{ChefInit::VERSION}"
+        exit 0
+      else
+        unless config[:onboot] || config[:bootstrap] || !cli_arguments.empty?
+          err "You must pass in either the --onboot or --bootstrap flag."
+          exit 1
+        end
 
-      if config[:onboot] && config[:bootstrap]
-        err "You must pass in either the --onboot OR --bootstrap flag, but not both." 
-        exit 1
-      end
+        if config[:onboot] && config[:bootstrap]
+          err "You must pass in either the --onboot OR the --bootstrap flag, but not both." 
+          exit 1
+        end
 
-      ChefInit::Log.level = config[:log_level].to_sym
+        ChefInit::Log.level = config[:log_level].to_sym
+      end
     end
 
     def set_default_options
-      if ::File.exist?("/chef/zero.rb")
+      if ::File.exist?("/etc/chef/zero.rb") || config[:local_mode]
         set_local_mode_defaults
       elsif ::File.exist?("/etc/chef/client.rb")
         set_server_mode_defaults
@@ -93,8 +132,8 @@ module ChefInit
 
     def set_local_mode_defaults
       config[:local_mode] ||= true
-      config[:config_file] ||= "/chef/zero.rb"
-      config[:json_attribs] ||= "/chef/first-boot.json"
+      config[:config_file] ||= "/etc/chef/zero.rb"
+      config[:json_attribs] ||= "/etc/chef/first-boot.json"
     end
 
     def set_server_mode_defaults
@@ -118,6 +157,10 @@ module ChefInit
 
       ChefInit::Log.info("Starting chef-client run...")
       @chef_client = run_chef_client
+
+      ChefInit::Log.debug("Wait for chef-client to finish, then delete validation key")
+      Process.wait(@chef_client)
+      delete_validation_key
 
       # Catch TERM signal and foward to supervisor
       Signal.trap("TERM") do
@@ -150,8 +193,11 @@ module ChefInit
       ChefInit::Log.info("Waiting for Supervisor to start...")
       wait_for_supervisor
 
-      ChefInit::Log.info("Starting chef-client run...\n")
+      ChefInit::Log.info("Starting chef-client run...")
       run_chef_client
+
+      ChefInit::Log.info("Deleting client key...")
+      delete_client_key
 
       Process.kill("TERM", @supervisor)
       exit 0
@@ -188,6 +234,14 @@ module ChefInit
       else
         "chef-client -c #{config[:config_file]} -j #{config[:json_attribs]} -l #{config[:log_level]}"
       end
+    end
+
+    def delete_client_key
+      File.rm("/etc/chef/client.pem") if File.exists?("/etc/chef/client.pem")
+    end
+
+    def delete_validation_key
+      File.rm("/etc/chef/validation.pem") if File.exists?("/etc/chef/validation.pem")
     end
 
     ##

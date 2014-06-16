@@ -14,18 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+require 'simplecov'
+
+SimpleCov.start do
+  add_filter '/spec/'
+  add_group 'ChefInit', 'lib/chef-init/'
+  add_group 'Chef', 'lib/chef/'
+end
+
 require 'chef'
 require 'chef/recipe'
-require 'ohai'
 
 $:.unshift(File.join(File.dirname(__FILE__), "..", "lib"))
 $:.unshift(File.expand_path("../lib", __FILE__))
 $:.unshift(File.dirname(__FILE__))
 
-# Ohai Rspec
-PLUGIN_PATH = File.expand_path("../../lib/ohai/plugins", __FILE__)
-SPEC_PLUGIN_PATH = File.expand_path("../data/plugins", __FILE__)
-def get_plugin(plugin, ohai = Ohai::System.new, path = PLUGIN_PATH)
-  loader = Ohai::Loader.new(ohai)
-  loader.load_plugin(File.join(path, "#{plugin}.rb"))
-end

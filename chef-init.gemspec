@@ -22,9 +22,12 @@ Gem::Specification.new do |s|
   s.add_dependency "mixlib-shellout", "~> 1.4"
   s.add_dependency "mixlib-log", "~> 1.1"
   s.add_dependency "chef", "~> 11.12"
+  s.add_dependency "docker-api", "~> 1.11.1"
 
+  s.add_development_dependency "rake", "~> 10.1.0"
   s.add_development_dependency "rspec", "~> 2.14.0"
   s.add_development_dependency "rspec-core", "~> 2.14.0"
   s.add_development_dependency "rspec-expectations", "~> 2.14.0"
   s.add_development_dependency "rspec-mocks", "~> 2.14.0"
+  s.add_development_dependency "simplecov", "~> 0.7.1"
 end

@@ -1,3 +1,20 @@
+#
+# Copyright:: Copyright (c) 2012-2014 Chef Software, Inc.
+# License:: Apache License, Version 2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 require 'spec_helper'
 require 'chef/dsl/container_service'
 
@@ -15,12 +32,12 @@ describe Chef::Recipe do
     @recipe.stub(:pp)
   end
 
-  describe "container_service" do
+  describe "#container_service" do
     let(:supervisor_class) { double("Chef::Resource::Supervisor") }
-    let(:supervisor_resource) { double("apache2", :command => nil, :run_action => nil) }
+    let(:supervisor_resource) { double("apache2", command: nil, run_action: nil, provider: Chef::Provider::Supervisor::Runit) }
 
     before do
-      allow(Chef::Resource::RunitSupervisor).to receive(:new).and_return(supervisor_resource)
+      allow(Chef::Resource::Supervisor).to receive(:new).and_return(supervisor_resource)
     end
 
     let(:run_chef_init) do
@@ -30,27 +47,36 @@ describe Chef::Recipe do
       end
     end
 
-    it 'should raise an error if it can not find an existing `service` resource with the same name in the resource collection' do
-      expect{
-        @recipe.service "apache" 
-        @recipe.container_service "apache2"
-      }.to raise_error(Chef::Exceptions::ResourceNotFound)
+    context 'can not find an existing `service` resource with the same name' do
+      it 'should raise an error' do
+        expect{
+          @recipe.service "apache" 
+          @recipe.container_service "apache2"
+        }.to raise_error(Chef::Exceptions::ResourceNotFound)
+      end
     end
 
-    it 'should set the provider of the `service` resource to the new provider' do
-      run_chef_init 
-      service_resource = @run_context.resource_collection.find("service[apache2]")
-      provider = service_resource.instance_exec { @provider }
-      expect(provider).to eql(Chef::Provider::Service::Supervisor::Runit)
-    end
+    context 'can find matching `service` resource' do
+      let(:supervisor) { double("Supervisor Resource", run_action: nil, provider: Chef::Provider::Supervisor::Runit) }
 
-    it 'should create a new process supervisor' do
-      expect(Chef::Resource::RunitSupervisor).to receive(:new).with("apache2", @run_context)
-      run_chef_init
+      it 'should set the provider of the `service` resource to the new provider' do
+        run_chef_init 
+        service_resource = @run_context.resource_collection.find("service[apache2]")
+        provider = service_resource.instance_exec { @provider }
+        expect(provider).to eql(Chef::Provider::Supervisor::Runit)
+      end
+
+      it 'should create a new process supervisor' do
+        Chef::Resource::Supervisor.stub(:new).and_return(supervisor)
+        expect(Chef::Resource::Supervisor).to receive(:new).with("apache2", @run_context)
+        expect(supervisor).to receive(:instance_exec)
+        expect(supervisor).to receive(:run_action).with(:setup)
+        run_chef_init
+      end
     end
 
     it 'should configure and enable the supervisor' do
-      Chef::Resource::RunitSupervisor.stub(:new).and_return(supervisor_resource)
+      Chef::Resource::Supervisor.stub(:new).and_return(supervisor_resource)
       expect(supervisor_resource).to receive(:instance_exec)
       expect(supervisor_resource).to receive(:run_action)
       run_chef_init

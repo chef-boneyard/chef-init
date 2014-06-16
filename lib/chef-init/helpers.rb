@@ -13,7 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
+
 
 require 'mixlib/shellout'
 require 'chef-init/log'
@@ -48,22 +48,23 @@ module ChefInit
       $stderr
     end
 
+    def exit(n)
+      Kernel.exit(n)
+    end
+    
     #
     # Locates the omnibus directories
     #
 
     def omnibus_root
-      #@omnibus_root ||= omnibus_expand_path(Gem.ruby, "..", "..", "..")
       "/opt/chef"
     end
 
     def omnibus_bin_dir
-      #@omnibus_bin_dir ||= omnibus_expand_path(omnibus_root, "bin")
       "/opt/chef/bin"
     end
 
     def omnibus_embedded_bin_dir
-      #@omnibus_embedded_bin_dir ||= omnibus_expand_path(omnibus_root, "embedded", "bin")
       "/opt/chef/embedded/bin"
     end
 
@@ -73,23 +74,6 @@ module ChefInit
       dir = File.expand_path(File.join(*paths))
       raise OmnibusInstallNotFound.new() unless ( dir and File.directory?(dir) )
       dir
-    end
-
-    #
-    # environment vars for omnibus
-    #
-
-    def omnibus_env
-      @omnibus_env ||=
-        begin
-          user_bin_dir = File.expand_path(File.join(Gem.user_dir, 'bin'))
-          env = {
-            'PATH' => "#{user_bin_dir}:#{omnibus_embedded_bin_dir}:#{ENV['PATH']}",
-            'GEM_ROOT' => Gem.default_dir.inspect,
-            'GEM_HOME' => Gem.paths.home,
-            'GEM_PATH' => Gem.path.join(':'),
-          }
-        end
     end
 
   end

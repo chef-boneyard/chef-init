@@ -14,38 +14,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-require 'chef/resource'
+
+require 'chef/provider/supervisor/runit'
 
 class Chef
   class Resource
-    class Supervisor < Chef::Resource
+    class Supervisor < Chef::Resource::Service
 
-      state_attrs :enabled
 
-      def initialize(name, run_context=nil)
+      def initialize(name, run_context = nil)
         super
         @resource_name = :supervisor
-        @supervisor_name = name
-        @action = :enable
-        @allowed_actions.push(:enabled, :disable)
-        @enabled = nil
+        @provider = Chef::Provider::Supervisor::Runit
+        @allowed_actions.push(:setup)
+        @binary = "/opt/chef/embedded/bin/sv"
+        @command = nil
+        @enabled = false
       end
 
-      def supervisor_name(arg=nil)
+      def command(arg=nil)
         set_or_return(
-          :supervisor_name,
+          :command,
           arg,
-          :kind_of => [ String ]
+          :kind_of => [ String ],
+          :required => true
         )
       end
 
-      def enabled(arg=nil)
+      def binary(arg=nil)
         set_or_return(
-          :enabled,
+          :binary,
           arg,
-          :kind_of => [ TrueClass, FalseClass ]
+          :kind_of => [ String ]
         )
       end
     end
   end
 end
+

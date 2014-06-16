@@ -14,8 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-require 'chef/resource/runit_supervisor'
-require 'chef/provider/service/supervisor/runit'
+
+require 'chef/resource/supervisor'
+require 'chef/provider/supervisor/runit'
 
 class Chef
   class Recipe
@@ -40,12 +41,12 @@ class Chef
         service_resource = resources("service[#{name}]")
 
         # Setup and configure the supervisor
-        supervisor = Chef::Resource::RunitSupervisor.new(name, run_context)
+        supervisor = Chef::Resource::Supervisor.new(name, run_context)
         supervisor.instance_exec(&block) if block
-        supervisor.run_action(:enable)
+        supervisor.run_action(:setup)
 
         # override `service` provider with Chef::Provider::Service::RunitSupervisor
-        service_resource.provider = Chef::Provider::Service::Supervisor::Runit
+        service_resource.provider = supervisor.provider
       rescue Chef::Exceptions::ResourceNotFound => e
         Chef::Log.info "Resource service[#{name}] not found."
         raise e
