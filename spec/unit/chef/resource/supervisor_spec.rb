@@ -39,11 +39,4 @@ describe Chef::Resource::Supervisor do
   it 'should have a provider of Chef::Provider::Supervisor' do
     expect(@resource.provider).to eql(Chef::Provider::Supervisor::Runit)
   end
-
-  it 'should have a binary of opt/chef/embedded/bin/sv' do
-    expect(@resource.binary).to eql('/opt/chef/embedded/bin/sv')
-  end
-
-  it 'should require a command parameter' do
-  end
 end

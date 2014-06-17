@@ -43,10 +43,10 @@ class Chef
         def define_resource_requirements
           requirements.assert(:setup) do |a|
             a.assertion do 
-              ::File.exists?(new_resource.binary) && ::File.executable?(new_resource.binary)
+              ::File.exists?(sv_bin) && ::File.executable?(sv_bin)
             end
-            a.failure_message(Chef::Exceptions::Supervisor, "#{new_resource.binary} does not exist or is not executable")
-            a.whyrun("Supervisor binary #{new_resource.binary} does not exist.") do
+            a.failure_message(Chef::Exceptions::Supervisor, "#{sv_bin} does not exist or is not executable")
+            a.whyrun("Supervisor binary '#{sv_bin}' does not exist.") do
               @status_load_success = false
             end
           end

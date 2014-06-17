@@ -40,14 +40,6 @@ class Chef
           :required => true
         )
       end
-
-      def binary(arg=nil)
-        set_or_return(
-          :binary,
-          arg,
-          :kind_of => [ String ]
-        )
-      end
     end
   end
 end
