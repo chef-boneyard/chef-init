@@ -12,8 +12,8 @@ We utilize **Github Issues** for issue tracking and contributions. You can contr
 We have a 3 step process that utilizes **Github Issues**:
 
 1. Sign our
-  [Individual Contributor License Agreement (CLA)](https://secure.echosign.com/public/hostedForm?formid=PJIF5694K6L)
-  or [Corporate CLA](https://secure.echosign.com/public/hostedForm?formid=PIE6C7AX856) online once.
+  [Individual Contributor License Agreement (CLA)](http://supermarket.getchef.com/icla-signatures)
+  or [Corporate CLA](http://supermarket.getchef.com/ccla-signatures) online once.
 2. Create a Github Pull Request.
 3. Do [Code Review](#cr) with the **Chef Engineering Team** or **ChefInit Core Committers** on the pull request.
 
