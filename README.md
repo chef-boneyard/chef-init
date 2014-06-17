@@ -21,8 +21,8 @@ Full License: [here](LICENSE)
 
 ChefInit - a PID1 for your Docker Containers
 
-Author:: Tom Duffield (<tom@getchef.com>)
-Copyright:: Copyright (c) 2012-2014 Chef Software, Inc.
+Author:: Tom Duffield (<tom@getchef.com>)  
+Copyright:: Copyright (c) 2012-2014 Chef Software, Inc.  
 License:: Apache License, Version 2.0
 
 Licensed under the Apache License, Version 2.0 (the "License");
