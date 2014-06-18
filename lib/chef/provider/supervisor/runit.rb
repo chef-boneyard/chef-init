@@ -40,21 +40,12 @@ class Chef
           @service_dir_link = nil
         end
         
-        def define_resource_requirements
-          requirements.assert(:setup) do |a|
-            a.assertion do 
-              ::File.exists?(sv_bin) && ::File.executable?(sv_bin)
-            end
-            a.failure_message(Chef::Exceptions::Supervisor, "#{sv_bin} does not exist or is not executable")
-            a.whyrun("Supervisor binary '#{sv_bin}' does not exist.") do
-              @status_load_success = false
-            end
-          end
-        end
-
         def load_current_resource
           @current_resource = Chef::Resource::Supervisor.new(new_resource.name)
           @current_resource.service_name(new_resource.service_name)
+          @current_resource.command(new_resource.command)
+
+          setup
 
           # Check the current status of the runit service
           @current_resource.running(running?)
@@ -65,7 +56,7 @@ class Chef
         ##
         # Setup Action
         #
-        def action_setup
+        def setup
           Chef::Log.debug("Creating service staging directory for #{new_resource.service_name}")
           staging_dir.run_action(:create)
 

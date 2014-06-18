@@ -220,7 +220,7 @@ module ChefInit
         while line = stdout_err.gets
           puts line
         end
-        wait_thr.value
+        wait_thr.value.to_i
       end
     end
 

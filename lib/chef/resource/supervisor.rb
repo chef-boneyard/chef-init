@@ -26,8 +26,6 @@ class Chef
         super
         @resource_name = :supervisor
         @provider = Chef::Provider::Supervisor::Runit
-        @allowed_actions.push(:setup)
-        @binary = "/opt/chef/embedded/bin/sv"
         @command = nil
         @enabled = false
       end

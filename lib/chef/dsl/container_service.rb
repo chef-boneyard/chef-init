@@ -19,39 +19,28 @@ require 'chef/resource/supervisor'
 require 'chef/provider/supervisor/runit'
 
 class Chef
-  class Recipe
-    
-    # Hijacks an existing service resource and changes the backend provider.
-    # It also creates the files and folders necessary to manage the runit service.
-    #
-    # For example:
-    #   # cookbook 'nginx' has several `service[nginx]` declarations. This will 
-    #
-    #   container_service 'nginx' do
-    #     command '/usr/sbin/nginx -c /etc/nginx/nginx.conf'
-    #   end
-    #
-    # ==== Parameters
-    # name<String>:: Name of the service to hijack
-    # block<Proc>:: Block with the command to use to create supervisor service
-    #
-    def container_service(name, &block)
-      begin
-        # Find the corresponding `service` resource and override the provider
-        service_resource = resources("service[#{name}]")
+  module DSL
+    module Recipe
 
-        # Setup and configure the supervisor
-        supervisor = Chef::Resource::Supervisor.new(name, run_context)
-        supervisor.instance_exec(&block) if block
-        supervisor.run_action(:setup)
+      # Special thanks for Dan Deleo
+      def service(name, &block) 
+        source_line = caller[0]
+        command = valid_supervisor_command_specified?(name)
+        unless command.nil? 
+          r = declare_resource(:supervisor, name, source_line, &block)
+          r.command(command)
+        else
+          declare_resource(:service, name, source_line, &block)
+        end
+      end
 
-        # override `service` provider with Chef::Provider::Service::RunitSupervisor
-        service_resource.provider = supervisor.provider
-      rescue Chef::Exceptions::ResourceNotFound => e
-        Chef::Log.info "Resource service[#{name}] not found."
-        raise e
+      def valid_supervisor_command_specified?(service_name)
+        if node["container_service"].key?(service_name)
+          return node["container_service"][service_name]["command"]
+        else
+          return nil
+        end
       end
     end
-
   end
 end

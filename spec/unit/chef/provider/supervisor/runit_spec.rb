@@ -31,6 +31,7 @@ describe Chef::Provider::Supervisor::Runit do
 
     @new_resource = Chef::Resource::Supervisor.new("foo")
     @new_resource.command "/usr/bin/foo"
+
     @current_resource = Chef::Resource::Supervisor.new("foo")
 
     @provider = Chef::Provider::Supervisor::Runit.new(@new_resource, @run_context)
@@ -43,6 +44,12 @@ describe Chef::Provider::Supervisor::Runit do
     before do
       @provider.stub(:running?)
       @provider.stub(:enabled?)
+      @provider.stub(:setup)
+    end
+
+    it "should setup the runit prerequisites" do
+      expect(@provider).to receive(:setup)
+      @provider.load_current_resource
     end
 
     it "should set the service_name" do
@@ -50,6 +57,11 @@ describe Chef::Provider::Supervisor::Runit do
       @provider.stub(:enabled?).and_return(true)
       @provider.load_current_resource
       expect(@current_resource.service_name).to eql("foo")      
+    end
+
+    it "should grab the command from the node object" do
+      @provider.load_current_resource  
+      expect(@current_resource.command).to eql("/usr/bin/foo")
     end
 
     context "when supervisor is already running" do
@@ -89,12 +101,7 @@ describe Chef::Provider::Supervisor::Runit do
     end
   end
 
-  describe "#define_resource_requirements" do
-     
-  end
-
-
-  describe "#action_setup" do
+  describe "#setup" do
     let(:staging_dir) { double("staging_dir", run_action: nil) }
     let(:down_file) { double("down_file", run_action: nil) }
     let(:run_script) { double("run_script", run_action: nil) }
@@ -124,7 +131,6 @@ describe Chef::Provider::Supervisor::Runit do
       expect(log_run_script).to receive(:run_action).with(:create)
       expect(service_dir_link).to receive(:run_action).with(:create)
       @provider.load_current_resource
-      @provider.action_setup
     end
   end
 

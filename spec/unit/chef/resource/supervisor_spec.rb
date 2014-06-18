@@ -36,7 +36,8 @@ describe Chef::Resource::Supervisor do
     expect(@resource.resource_name).to eql(:supervisor)
   end
 
-  it 'should have a provider of Chef::Provider::Supervisor' do
+  it 'should have a provider of Chef::Provider::Supervisor::Runit' do
     expect(@resource.provider).to eql(Chef::Provider::Supervisor::Runit)
   end
+
 end

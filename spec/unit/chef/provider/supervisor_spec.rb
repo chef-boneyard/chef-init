@@ -14,3 +14,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+describe Chef::Provider::Supervisor do
+
+  before(:each) do
+    @provider = Chef::Provider::Supervisor.new("foo")
+  end
+
+  it 'should return a Chef::Provider::Supervisor' do
+    expect(@provider).to be_a_kind_of(Chef::Provider::Supervisor)
+  end
+
+  it 'should extend Chef::Provider::Service' do
+    expect(@provider).to be_a_kind_of(Chef::Provider::Service)
+  end
+
+  describe '#omnibus_root' do
+    it 'should return /opt/chef' do
+      expect(@provider.omnibus_root).to eql('/opt/chef')
+    end
+  end
+
+  describe '#omnibus_embedded_bin_dir' do
+    it 'should return /opt/chef/embedded/bin' do
+      expect(@provider.omnibus_embedded_bin_dir).to eql('/opt/chef/embedded/bin')
+    end
+  end
+end
