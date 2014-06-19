@@ -21,10 +21,9 @@ class Chef
   class Resource
     class Supervisor < Chef::Resource::Service
 
-
       def initialize(name, run_context = nil)
         super
-        @resource_name = :supervisor
+        @resource_name = :service
         @provider = Chef::Provider::Supervisor::Runit
         @command = nil
         @enabled = false

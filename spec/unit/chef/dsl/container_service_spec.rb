@@ -58,6 +58,11 @@ describe Chef::DSL::Recipe do
         expect(resource).to receive(:command).with("/usr/bin/foo")
         @recipe.service "foo"
       end
+
+      it "should add the resource to the resource collection as a service resource" do
+        @recipe.service "foo"
+        expect{ @run_context.resource_collection.lookup["service[foo]"] }.to_not raise_error
+      end
     end
 
     context "when supervisor command does not exist" do

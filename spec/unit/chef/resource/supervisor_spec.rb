@@ -32,8 +32,8 @@ describe Chef::Resource::Supervisor do
     expect(@resource).to be_a_kind_of(Chef::Resource::Service)
   end
 
-  it 'should have a resource name of :supervisor' do
-    expect(@resource.resource_name).to eql(:supervisor)
+  it 'should have a resource name of :service' do
+    expect(@resource.resource_name).to eql(:service)
   end
 
   it 'should have a provider of Chef::Provider::Supervisor::Runit' do
