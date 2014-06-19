@@ -375,11 +375,11 @@ describe ChefInit::CLI do
   describe "#delete_validation_key" do
     before do
       File.stub(:exists?).with("/etc/chef/validation.pem").and_return(true)
-      File.stub(:rm)  
+      File.stub(:delete)  
     end
 
     it "should remove validation key file" do
-      expect(File).to receive(:rm).with("/etc/chef/validation.pem")
+      expect(File).to receive(:delete).with("/etc/chef/validation.pem")
       cli.delete_validation_key
     end
   end
@@ -387,11 +387,11 @@ describe ChefInit::CLI do
   describe "#delete_client_key" do
     before do
       File.stub(:exists?).with("/etc/chef/client.pem").and_return(true)
-      File.stub(:rm)
+      File.stub(:delete)
     end
 
     it "should remove client key file" do
-      expect(File).to receive(:rm).with("/etc/chef/client.pem")
+      expect(File).to receive(:delete).with("/etc/chef/client.pem")
       cli.delete_client_key
     end
   end

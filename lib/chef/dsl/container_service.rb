@@ -35,8 +35,12 @@ class Chef
       end
 
       def valid_supervisor_command_specified?(service_name)
-        if node["container_service"].key?(service_name)
-          return node["container_service"][service_name]["command"]
+        if node.key?("container_service")
+          if node["container_service"].key?(service_name)
+            return node["container_service"][service_name]["command"]
+          else
+            return nil
+          end
         else
           return nil
         end

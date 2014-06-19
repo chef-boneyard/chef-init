@@ -76,7 +76,7 @@ module ChefInit
       :description  => "Set the log level (debug, info, warn, error, fatal)",
       :default      => "info"
 
-    option :version, 
+    option :version,
       :short        => "-v",
       :long         => "--version",
       :boolean      => true
@@ -114,7 +114,7 @@ module ChefInit
         end
 
         if config[:onboot] && config[:bootstrap]
-          err "You must pass in either the --onboot OR the --bootstrap flag, but not both." 
+          err "You must pass in either the --onboot OR the --bootstrap flag, but not both."
           exit 1
         end
 
@@ -179,7 +179,7 @@ module ChefInit
       Process.wait(@supervisor)
       exit 0
     end
-    
+
     ##
     # Launch bootstrap
     #
@@ -215,7 +215,7 @@ module ChefInit
       "#{omnibus_embedded_bin_dir}/runsvdir -P #{omnibus_root}/service 'log: #{ '.' * 395}'"
     end
 
-    def run_chef_client 
+    def run_chef_client
       Open3.popen2e({"PATH" => path}, chef_client_command) do |stdin, stdout_err, wait_thr|
         while line = stdout_err.gets
           puts line
@@ -237,11 +237,11 @@ module ChefInit
     end
 
     def delete_client_key
-      File.rm("/etc/chef/client.pem") if File.exists?("/etc/chef/client.pem")
+      File.delete("/etc/chef/client.pem") if File.exists?("/etc/chef/client.pem")
     end
 
     def delete_validation_key
-      File.rm("/etc/chef/validation.pem") if File.exists?("/etc/chef/validation.pem")
+      File.delete("/etc/chef/validation.pem") if File.exists?("/etc/chef/validation.pem")
     end
 
     ##
