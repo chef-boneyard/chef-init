@@ -64,6 +64,11 @@ module ChefInit
       :description  => "Set the log level (debug, info, warn, error, fatal)",
       :default      => "info"
 
+    option :environment,
+      :short        => "-E ENVRIONMENT",
+      :long         => "--environment",
+      :description  => "Set the Chef Environment on the node"
+
     option :onboot,
       :long => "--onboot",
       :description => "",
@@ -229,11 +234,20 @@ module ChefInit
     end
 
     def chef_client_command
+      command = []
+      command << "chef-client -c #{config[:config_file]} -j #{config[:json_attribs]}"
+
       if config[:local_mode]
-        "chef-client -c #{config[:config_file]} -j #{config[:json_attribs]} -z -l #{config[:log_level]}"
-      else
-        "chef-client -c #{config[:config_file]} -j #{config[:json_attribs]} -l #{config[:log_level]}"
+        command << "-z"
       end
+
+      command << "-l #{config[:log_level]}"
+
+      unless config[:environment].nil?
+        command << "-E #{config[:environment]}"
+      end
+
+      command.join(" ")
     end
 
     def delete_client_key
