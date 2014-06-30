@@ -16,27 +16,35 @@
 #
 
 require 'spec_helper'
-require 'chef/resource/supervisor'
-require 'chef/provider/supervisor/runit'
+require 'chef/resource/container_service'
+require 'chef/provider/container_service/runit'
 
-describe Chef::Provider::Supervisor::Runit do 
+describe Chef::Provider::ContainerService::Runit do
   def runit_signal(action)
     "/opt/chef/embedded/bin/sv #{action} /opt/chef/service/foo"
   end
-  
+
   before(:each) do
     @node = Chef::Node.new
+    @node.normal['container_service']['foo']['command'] = "/usr/bin/foo"
+
     @events = Chef::EventDispatch::Dispatcher.new
     @run_context = Chef::RunContext.new(@node, {},  @events)
 
-    @new_resource = Chef::Resource::Supervisor.new("foo")
-    @new_resource.command "/usr/bin/foo"
+    @new_resource = Chef::Resource::ContainerService.new("foo", @run_context)
+    @current_resource = Chef::Resource::ContainerService.new("foo", @run_context)
 
-    @current_resource = Chef::Resource::Supervisor.new("foo")
+    @provider = Chef::Provider::ContainerService::Runit.new(@new_resource, @run_context)
 
-    @provider = Chef::Provider::Supervisor::Runit.new(@new_resource, @run_context)
+    Chef::Resource::ContainerService.stub(:new).and_return(@current_resource)
+  end
 
-    Chef::Resource::Supervisor.stub(:new).and_return(@current_resource)
+  describe "#initialize" do
+
+    it "should grab the service command from the node object" do
+      expect(@provider.command).to eql("/usr/bin/foo")
+    end
+
   end
 
   describe "#load_current_resource" do
@@ -56,12 +64,7 @@ describe Chef::Provider::Supervisor::Runit do
       @provider.stub(:running?).and_return(true)
       @provider.stub(:enabled?).and_return(true)
       @provider.load_current_resource
-      expect(@current_resource.service_name).to eql("foo")      
-    end
-
-    it "should grab the command from the node object" do
-      @provider.load_current_resource  
-      expect(@current_resource.command).to eql("/usr/bin/foo")
+      expect(@current_resource.service_name).to eql("foo")
     end
 
     context "when supervisor is already running" do
@@ -97,7 +100,7 @@ describe Chef::Provider::Supervisor::Runit do
     end
 
     it "should inspect current state of system and return a new Chef::Resource::Supervisor object" do
-      expect(@provider.load_current_resource).to be_a_instance_of(Chef::Resource::Supervisor)
+      expect(@provider.load_current_resource).to be_a_instance_of(Chef::Resource::ContainerService)
     end
   end
 
@@ -219,8 +222,8 @@ describe Chef::Provider::Supervisor::Runit do
   # Load Current Resource Helpers
   #
   describe "#running?" do
-    let(:command) { double("shell_out", stdout: 'run: ok', exitstatus: 0)} 
-    
+    let(:command) { double("shell_out", stdout: 'run: ok', exitstatus: 0)}
+
     before do
       @provider.stub(:shell_out).and_return(command)
     end
@@ -233,8 +236,8 @@ describe Chef::Provider::Supervisor::Runit do
     end
 
     context "service is not running" do
-      let(:command) { double("shell_out", stdout: 'error: not ok', exitstatus: 1) } 
-      
+      let(:command) { double("shell_out", stdout: 'error: not ok', exitstatus: 1) }
+
       before do
         @provider.stub(:shell_out).with(runit_signal("status")).and_return(command)
       end
@@ -246,8 +249,8 @@ describe Chef::Provider::Supervisor::Runit do
     end
 
     context "service is running" do
-      let(:command) { double("shell_out", stdout: 'run: ok', exitstatus: 0) } 
-      
+      let(:command) { double("shell_out", stdout: 'run: ok', exitstatus: 0) }
+
       before do
         @provider.stub(:shell_out).with(runit_signal("status")).and_return(command)
       end
@@ -286,7 +289,7 @@ describe Chef::Provider::Supervisor::Runit do
   ##
   # Misc Helpers
   describe "#wait_for_service" do
-    
+
   end
 
   describe "#service_dir_name" do
@@ -369,7 +372,7 @@ describe Chef::Provider::Supervisor::Runit do
       expect(@provider.instance_eval { run_script }).to eql(run_script)
     end
   end
-  
+
   describe "#log_dir" do
     let(:log_dir) { double("log_dir", recursive: nil, mode: nil) }
 

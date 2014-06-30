@@ -21,12 +21,14 @@ require 'chef/resource/file'
 require 'chef/provider/file'
 require 'chef/resource/directory'
 require 'chef/provider/directory'
-require 'chef/provider/supervisor'
+require 'chef/provider/container_service'
 
 class Chef
   class Provider
-    class Supervisor
-      class Runit < Chef::Provider::Supervisor
+    class ContainerService
+      class Runit < Chef::Provider::ContainerService
+
+        attr_reader :command
 
         def initialize(name, run_context=nil)
           super
@@ -38,12 +40,12 @@ class Chef
           @log_main_dir = nil
           @log_run_script = nil
           @service_dir_link = nil
+          @command = node["container_service"][new_resource.service_name]["command"]
         end
-        
+
         def load_current_resource
-          @current_resource = Chef::Resource::Supervisor.new(new_resource.name)
+          @current_resource = Chef::Resource::ContainerService.new(new_resource.name)
           @current_resource.service_name(new_resource.service_name)
-          @current_resource.command(new_resource.command)
 
           setup
 
@@ -110,7 +112,7 @@ class Chef
           shell_out!("#{sv_bin} force-reload #{service_dir_name}")
         end
 
-        ## 
+        ##
         # Helper Methods for Service Override
         #
         def running?
@@ -139,7 +141,7 @@ class Chef
           end
         end
 
-        def service_dir_name 
+        def service_dir_name
           ::File.join(omnibus_root, "service", new_resource.service_name)
         end
 
@@ -157,14 +159,14 @@ class Chef
         def run_script_content
           "#!/bin/sh
 exec 2>&1
-exec #{new_resource.command} 2>&1"
+exec #{@command} 2>&1"
         end
 
         def log_run_script_content
           "#!/bin/sh
 exec svlogd -tt /var/log/#{new_resource.service_name}"
         end
-        
+
         ##
         # Helper Methods that control Chef Resources
         #

@@ -15,29 +15,35 @@
 # limitations under the License.
 #
 
-require 'chef/provider/supervisor/runit'
+require 'chef/provider/service'
+require 'chef/mixin/shell_out'
+require 'chef/mixin/language'
 
 class Chef
-  class Resource
-    class Supervisor < Chef::Resource::Service
+  class Exceptions
+    class ContainerService < RuntimeError; end
+  end
+end
 
-      def initialize(name, run_context = nil)
+class Chef
+  class Provider
+    class ContainerService < Chef::Provider::Service
+      include Chef::Mixin::ShellOut
+
+      def initialize(name, run_context=nil)
         super
-        @resource_name = :service
-        @provider = Chef::Provider::Supervisor::Runit
-        @command = nil
-        @enabled = false
       end
 
-      def command(arg=nil)
-        set_or_return(
-          :command,
-          arg,
-          :kind_of => [ String ],
-          :required => true
-        )
+      ##
+      # Omnibus Helper Methods
+      #
+      def omnibus_root
+        '/opt/chef'
+      end
+
+      def omnibus_embedded_bin_dir
+        ::File.join(omnibus_root, "embedded", "bin")
       end
     end
   end
 end
-

@@ -15,29 +15,31 @@
 # limitations under the License.
 #
 
-require 'spec_helper'
-require 'chef/resource/supervisor'
+require 'chef/provider/container_service'
 
-describe Chef::Resource::Supervisor do
+describe Chef::Provider::ContainerService do
 
   before(:each) do
-    @resource = Chef::Resource::Supervisor.new("foo")
+    @provider = Chef::Provider::ContainerService.new("foo")
   end
 
-  it 'should return a Chef::Resource::Supervisor' do
-    expect(@resource).to be_a_kind_of(Chef::Resource::Supervisor)
+  it 'should return a Chef::Provider::ContainerService' do
+    expect(@provider).to be_a_kind_of(Chef::Provider::ContainerService)
   end
 
-  it 'should be a sub-class of Chef::Resource::Service' do
-    expect(@resource).to be_a_kind_of(Chef::Resource::Service)
+  it 'should extend Chef::Provider::Service' do
+    expect(@provider).to be_a_kind_of(Chef::Provider::Service)
   end
 
-  it 'should have a resource name of :service' do
-    expect(@resource.resource_name).to eql(:service)
+  describe '#omnibus_root' do
+    it 'should return /opt/chef' do
+      expect(@provider.omnibus_root).to eql('/opt/chef')
+    end
   end
 
-  it 'should have a provider of Chef::Provider::Supervisor::Runit' do
-    expect(@resource.provider).to eql(Chef::Provider::Supervisor::Runit)
+  describe '#omnibus_embedded_bin_dir' do
+    it 'should return /opt/chef/embedded/bin' do
+      expect(@provider.omnibus_embedded_bin_dir).to eql('/opt/chef/embedded/bin')
+    end
   end
-
 end

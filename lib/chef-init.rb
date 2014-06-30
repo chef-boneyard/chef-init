@@ -15,4 +15,4 @@
 # limitations under the License.
 #
 
-require 'chef/dsl/container_service'
+require 'chef/resource/container_service'

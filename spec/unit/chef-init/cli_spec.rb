@@ -31,12 +31,12 @@ describe ChefInit::CLI do
 
   def stderr
     stderr_io.string
-  end 
+  end
 
   before do
     ChefInit::Log.stub(:info)
   end
-  
+
   subject(:cli) do
     ChefInit::CLI.new(argv, max_retries).tap do |c|
       c.stub(:stdout).and_return(stdout_io)
@@ -117,7 +117,7 @@ describe ChefInit::CLI do
     context "given an invalid/unknown option" do
       it "gives an 'unknown option' message, the help output and exits with 1"
     end
-    
+
     context "both bootstrap and onboot flags are given" do
       let(:argv) { %w[ --onboot --bootstrap ]}
       it "gives an 'invalid option' message, the help output and exits with 1" do
@@ -137,7 +137,7 @@ describe ChefInit::CLI do
 
       it "should default to local_mode" do
         expect(cli).to receive(:set_local_mode_defaults)
-        expect(cli).not_to receive(:exit) 
+        expect(cli).not_to receive(:exit)
         cli.handle_options
       end
     end
@@ -149,15 +149,15 @@ describe ChefInit::CLI do
         ::File.stub(:exist?).with("/etc/chef/zero.rb").and_return(false)
         ::File.stub(:exist?).with("/etc/chef/client.rb").and_return(true)
       end
-      
+
       it "should default to client mode" do
-        expect(cli).to receive(:set_server_mode_defaults)      
-        expect(cli).not_to receive(:exit) 
+        expect(cli).to receive(:set_server_mode_defaults)
+        expect(cli).not_to receive(:exit)
         cli.handle_options
       end
     end
   end
-  
+
   describe "#set_default_options" do
     context "zero.rb exists" do
       before do
@@ -204,7 +204,7 @@ describe ChefInit::CLI do
 
   describe "#launch_onboot" do
     let(:supervisor_pid) { 1000 }
-    
+
     before do
       cli.stub(:print_welcome)
       cli.stub(:launch_supervisor).and_return(supervisor_pid)
@@ -274,7 +274,7 @@ describe ChefInit::CLI do
 
   describe "#launch_bootstrap" do
     let(:supervisor_pid) { 1000 }
-    
+
     before do
       cli.stub(:print_welcome)
       cli.stub(:launch_supervisor).and_return(supervisor_pid)
@@ -324,7 +324,7 @@ describe ChefInit::CLI do
   describe "#launch_supervisor" do
     let(:cmd) { "/opt/chef/embedded/bin/runsvdir -P /opt/chef/service 'log: #{ '.' * 395 }'" }
     let(:env) { {"PATH" => cli.path } }
-    
+
     before do
       Process.stub(:spawn).with(env, cmd)
     end
@@ -341,7 +341,7 @@ describe ChefInit::CLI do
     end
 
     it "should sleep for 1 second" do
-      expect(cli).to receive(:sleep).with(1)  
+      expect(cli).to receive(:sleep).with(1)
       cli.wait_for_supervisor
     end
   end
@@ -352,7 +352,7 @@ describe ChefInit::CLI do
     before do
       Open3.stub(:popen2e)
     end
-  
+
     context "when local-mode flag was passed in" do
       it "should execute chef-client in local-mode" do
         cli.stub(:chef_client_command) { "chef-client -c /etc/chef/zero.rb -j /etc/chef/first-boot.json -z" }
@@ -368,14 +368,14 @@ describe ChefInit::CLI do
     end
 
     it "should forward stdout from subprocess to main stdout" do
-      
+
     end
   end
 
   describe "#delete_validation_key" do
     before do
       File.stub(:exists?).with("/etc/chef/validation.pem").and_return(true)
-      File.stub(:delete)  
+      File.stub(:delete)
     end
 
     it "should remove validation key file" do
@@ -395,9 +395,9 @@ describe ChefInit::CLI do
       cli.delete_client_key
     end
   end
-  
+
   describe "#chef_client_command" do
-    
+
     context "chef local-mode" do
       let(:argv) { ["--bootstrap", "-z"]}
 
@@ -405,6 +405,16 @@ describe ChefInit::CLI do
         cli.handle_options
         command = cli.chef_client_command
         expect(command).to eql("chef-client -c /etc/chef/zero.rb -j /etc/chef/first-boot.json -z -l info")
+      end
+    end
+
+    context "environment is passed in" do
+      let(:argv) { ["--bootstrap", "-E", "prod"] }
+
+      it "should pass through the environment variable" do
+        cli.handle_options
+        command = cli.chef_client_command
+        expect(command).to eql("chef-client -c /etc/chef/client.rb -j /etc/chef/first-boot.json -l info -E prod")
       end
     end
 
@@ -418,4 +428,4 @@ describe ChefInit::CLI do
       end
     end
   end
-end  
+end
