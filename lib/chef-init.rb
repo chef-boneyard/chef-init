@@ -16,3 +16,27 @@
 #
 
 require 'chef/resource/container_service'
+
+module ChefInit
+
+  ##
+  # This is a helper variable to use to set the node name when running chef-init.
+  # The order of precedence for the node name is as follows (from highest to lowest)
+  #
+  # => ENV['CHEF_NODE_NAME']
+  # => Some future algorithm that will use the container API
+  # => nil
+  def self.node_name
+    case
+      
+    # Highest order of precedence is an environment variable
+    when ! ENV['CHEF_NODE_NAME'].nil?
+      ENV['CHEF_NODE_NAME']
+
+    # Default is nil, which will cause Chef to take over
+    else
+      nil
+    end
+  end
+
+end
