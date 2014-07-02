@@ -27,15 +27,16 @@ module ChefInit
   # => Some future algorithm that will use the container API
   # => nil
   def self.node_name
-
+    case
+      
     # Highest order of precedence is an environment variable
-    # This allows people using Docker to set the node name from outside the container.
-    unless ENV['CHEF_NODE_NAME'].nil?
-      return ENV['CHEF_NODE_NAME']
-    end
+    when ! ENV['CHEF_NODE_NAME'].nil?
+      ENV['CHEF_NODE_NAME']
 
     # Default is nil, which will cause Chef to take over
-    return nil
+    else
+      nil
+    end
   end
 
 end
