@@ -35,6 +35,9 @@ describe ChefInit::CLI do
 
   before do
     ChefInit::Log.stub(:info)
+
+    # by default, we are running in local-mode
+    ::File.stub(:exists?).with("/etc/chef/zero.rb").and_return(true)
   end
 
   subject(:cli) do
