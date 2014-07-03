@@ -128,10 +128,13 @@ module ChefInit
     end
 
     def set_default_options
-      if ::File.exist?("/etc/chef/zero.rb") || config[:local_mode]
+      if ::File.exists?("/etc/chef/zero.rb") || config[:local_mode]
         set_local_mode_defaults
-      elsif ::File.exist?("/etc/chef/client.rb")
+      elsif ::File.exists?("/etc/chef/client.rb")
         set_server_mode_defaults
+      else
+        err "Cannot find a valid configuration file in /etc/chef"
+        exit 1
       end
     end
 
