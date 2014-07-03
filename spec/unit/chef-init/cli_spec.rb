@@ -35,6 +35,9 @@ describe ChefInit::CLI do
 
   before do
     ChefInit::Log.stub(:info)
+
+    # by default, we are running in local-mode
+    File.stub(:exist?).with("/etc/chef/zero.rb").and_return(true)
   end
 
   subject(:cli) do
@@ -131,8 +134,8 @@ describe ChefInit::CLI do
       let(:argv) { %w[ --onboot ] }
 
       before do
-        ::File.stub(:exist?).with("/etc/chef/zero.rb").and_return(true)
-        ::File.stub(:exist?).with("/etc/chef/client.rb").and_return(false)
+        File.stub(:exist?).with("/etc/chef/zero.rb").and_return(true)
+        File.stub(:exist?).with("/etc/chef/client.rb").and_return(false)
       end
 
       it "should default to local_mode" do
@@ -146,8 +149,8 @@ describe ChefInit::CLI do
       let(:argv) { %w[ --onboot ] }
 
       before do
-        ::File.stub(:exist?).with("/etc/chef/zero.rb").and_return(false)
-        ::File.stub(:exist?).with("/etc/chef/client.rb").and_return(true)
+        File.stub(:exist?).with("/etc/chef/zero.rb").and_return(false)
+        File.stub(:exist?).with("/etc/chef/client.rb").and_return(true)
       end
 
       it "should default to client mode" do
@@ -180,6 +183,19 @@ describe ChefInit::CLI do
       it "sets client-mode defaults" do
         expect(cli).to receive(:set_server_mode_defaults)
         cli.set_default_options
+      end
+    end
+
+    context "valid configuration file does not exist" do
+      before do
+        File.stub(:exist?).with("/etc/chef/client.rb").and_return(false)
+        File.stub(:exist?).with("/etc/chef/zero.rb").and_return(false)
+      end
+
+      it "should exit with error" do
+        expect(cli).to receive(:exit).with(1)
+        cli.set_default_options
+        expect(stderr).to eql("Cannot find a valid configuration file in /etc/chef\n")
       end
     end
   end
@@ -374,7 +390,7 @@ describe ChefInit::CLI do
 
   describe "#delete_validation_key" do
     before do
-      File.stub(:exists?).with("/etc/chef/validation.pem").and_return(true)
+      File.stub(:exist?).with("/etc/chef/validation.pem").and_return(true)
       File.stub(:delete)
     end
 
@@ -386,7 +402,7 @@ describe ChefInit::CLI do
 
   describe "#delete_client_key" do
     before do
-      File.stub(:exists?).with("/etc/chef/client.pem").and_return(true)
+      File.stub(:exist?).with("/etc/chef/client.pem").and_return(true)
       File.stub(:delete)
     end
 
@@ -397,9 +413,12 @@ describe ChefInit::CLI do
   end
 
   describe "#chef_client_command" do
-
     context "chef local-mode" do
       let(:argv) { ["--bootstrap", "-z"]}
+      before do
+        File.stub(:exist?).with("/etc/chef/zero.rb").and_return(true)
+        File.stub(:exist?).with("/etc/chef/client.rb").and_return(false)
+      end
 
       it "should return local-mode command" do
         cli.handle_options
@@ -410,6 +429,10 @@ describe ChefInit::CLI do
 
     context "environment is passed in" do
       let(:argv) { ["--bootstrap", "-E", "prod"] }
+      before do
+        File.stub(:exist?).with("/etc/chef/zero.rb").and_return(false)
+        File.stub(:exist?).with("/etc/chef/client.rb").and_return(true)
+      end
 
       it "should pass through the environment variable" do
         cli.handle_options
@@ -420,6 +443,10 @@ describe ChefInit::CLI do
 
     context "chef server-mode" do
       let(:argv) { ["--bootstrap"] }
+      before do
+        File.stub(:exist?).with("/etc/chef/zero.rb").and_return(false)
+        File.stub(:exist?).with("/etc/chef/client.rb").and_return(true)
+      end
 
       it "should return server-mode command" do
         cli.handle_options
