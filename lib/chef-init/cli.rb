@@ -128,9 +128,9 @@ module ChefInit
     end
 
     def set_default_options
-      if ::File.exists?("/etc/chef/zero.rb") || config[:local_mode]
+      if File.exist?("/etc/chef/zero.rb") || config[:local_mode]
         set_local_mode_defaults
-      elsif ::File.exists?("/etc/chef/client.rb")
+      elsif File.exist?("/etc/chef/client.rb")
         set_server_mode_defaults
       else
         err "Cannot find a valid configuration file in /etc/chef"
@@ -254,11 +254,11 @@ module ChefInit
     end
 
     def delete_client_key
-      File.delete("/etc/chef/client.pem") if File.exists?("/etc/chef/client.pem")
+      File.delete("/etc/chef/client.pem") if File.exist?("/etc/chef/client.pem")
     end
 
     def delete_validation_key
-      File.delete("/etc/chef/validation.pem") if File.exists?("/etc/chef/validation.pem")
+      File.delete("/etc/chef/validation.pem") if File.exist?("/etc/chef/validation.pem")
     end
 
     ##

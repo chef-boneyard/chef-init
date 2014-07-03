@@ -37,7 +37,7 @@ describe ChefInit::CLI do
     ChefInit::Log.stub(:info)
 
     # by default, we are running in local-mode
-    ::File.stub(:exists?).with("/etc/chef/zero.rb").and_return(true)
+    File.stub(:exist?).with("/etc/chef/zero.rb").and_return(true)
   end
 
   subject(:cli) do
@@ -134,8 +134,8 @@ describe ChefInit::CLI do
       let(:argv) { %w[ --onboot ] }
 
       before do
-        ::File.stub(:exists?).with("/etc/chef/zero.rb").and_return(true)
-        ::File.stub(:exists?).with("/etc/chef/client.rb").and_return(false)
+        File.stub(:exist?).with("/etc/chef/zero.rb").and_return(true)
+        File.stub(:exist?).with("/etc/chef/client.rb").and_return(false)
       end
 
       it "should default to local_mode" do
@@ -149,8 +149,8 @@ describe ChefInit::CLI do
       let(:argv) { %w[ --onboot ] }
 
       before do
-        ::File.stub(:exists?).with("/etc/chef/zero.rb").and_return(false)
-        ::File.stub(:exists?).with("/etc/chef/client.rb").and_return(true)
+        File.stub(:exist?).with("/etc/chef/zero.rb").and_return(false)
+        File.stub(:exist?).with("/etc/chef/client.rb").and_return(true)
       end
 
       it "should default to client mode" do
@@ -164,8 +164,8 @@ describe ChefInit::CLI do
   describe "#set_default_options" do
     context "zero.rb exists" do
       before do
-        ::File.stub(:exists?).with("/etc/chef/zero.rb").and_return(true)
-        ::File.stub(:exists?).with("/etc/chef/client.rb").and_return(false)
+        File.stub(:exist?).with("/etc/chef/zero.rb").and_return(true)
+        File.stub(:exist?).with("/etc/chef/client.rb").and_return(false)
       end
 
       it "sets local-mode defaults" do
@@ -176,8 +176,8 @@ describe ChefInit::CLI do
 
     context "client.rb exists" do
       before do
-        ::File.stub(:exists?).with("/etc/chef/zero.rb").and_return(false)
-        ::File.stub(:exists?).with("/etc/chef/client.rb").and_return(true)
+        File.stub(:exist?).with("/etc/chef/zero.rb").and_return(false)
+        File.stub(:exist?).with("/etc/chef/client.rb").and_return(true)
       end
 
       it "sets client-mode defaults" do
@@ -188,8 +188,8 @@ describe ChefInit::CLI do
 
     context "valid configuration file does not exist" do
       before do
-        ::File.stub(:exists?).with("/etc/chef/client.rb").and_return(false)
-        ::File.stub(:exists?).with("/etc/chef/zero.rb").and_return(false)
+        File.stub(:exist?).with("/etc/chef/client.rb").and_return(false)
+        File.stub(:exist?).with("/etc/chef/zero.rb").and_return(false)
       end
 
       it "should exit with error" do
@@ -390,7 +390,7 @@ describe ChefInit::CLI do
 
   describe "#delete_validation_key" do
     before do
-      File.stub(:exists?).with("/etc/chef/validation.pem").and_return(true)
+      File.stub(:exist?).with("/etc/chef/validation.pem").and_return(true)
       File.stub(:delete)
     end
 
@@ -402,7 +402,7 @@ describe ChefInit::CLI do
 
   describe "#delete_client_key" do
     before do
-      File.stub(:exists?).with("/etc/chef/client.pem").and_return(true)
+      File.stub(:exist?).with("/etc/chef/client.pem").and_return(true)
       File.stub(:delete)
     end
 
@@ -416,8 +416,8 @@ describe ChefInit::CLI do
     context "chef local-mode" do
       let(:argv) { ["--bootstrap", "-z"]}
       before do
-        ::File.stub(:exists?).with("/etc/chef/zero.rb").and_return(true)
-        ::File.stub(:exists?).with("/etc/chef/client.rb").and_return(false)
+        File.stub(:exist?).with("/etc/chef/zero.rb").and_return(true)
+        File.stub(:exist?).with("/etc/chef/client.rb").and_return(false)
       end
 
       it "should return local-mode command" do
@@ -430,8 +430,8 @@ describe ChefInit::CLI do
     context "environment is passed in" do
       let(:argv) { ["--bootstrap", "-E", "prod"] }
       before do
-        ::File.stub(:exists?).with("/etc/chef/zero.rb").and_return(false)
-        ::File.stub(:exists?).with("/etc/chef/client.rb").and_return(true)
+        File.stub(:exist?).with("/etc/chef/zero.rb").and_return(false)
+        File.stub(:exist?).with("/etc/chef/client.rb").and_return(true)
       end
 
       it "should pass through the environment variable" do
@@ -444,8 +444,8 @@ describe ChefInit::CLI do
     context "chef server-mode" do
       let(:argv) { ["--bootstrap"] }
       before do
-        ::File.stub(:exists?).with("/etc/chef/zero.rb").and_return(false)
-        ::File.stub(:exists?).with("/etc/chef/client.rb").and_return(true)
+        File.stub(:exist?).with("/etc/chef/zero.rb").and_return(false)
+        File.stub(:exist?).with("/etc/chef/client.rb").and_return(true)
       end
 
       it "should return server-mode command" do
