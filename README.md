@@ -3,9 +3,9 @@
 
 chef-init is a RubyGem that is distributed with [chef-container] and intended to be used as PID1 inside Linux Containers. 
 
-It’s primary purpose is to provide an interface with which to safely launch a chef-client run and a process supervisor to manage the services that your Chef recipes create. 
+Its primary purpose is to provide an interface with which to safely launch a chef-client run and a process supervisor to manage the services that your Chef recipes create. 
 
-It’s secondary purpose is to provide useful Chef Resources and Recipe DSLs that you can use to interface more cleanly with the process supervisor.
+Its secondary purpose is to provide useful Chef Resources and Recipe DSLs that you can use to interface more cleanly with the process supervisor.
 
 ## Installation
 This RubyGem is already bundled with [chef-container] and should not be install separately at this time.
