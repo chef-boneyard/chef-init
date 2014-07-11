@@ -39,6 +39,8 @@ describe ChefInit::CLI do
     # by default, we are running in local-mode
     File.stub(:exist?).with("/etc/chef/zero.rb").and_return(true)
     File.stub(:exist?).with("/etc/chef/.node_name").and_return(false)
+    File.stub(:exist?).with("/etc/chef/secure/validation.pem").and_return(true)
+    File.stub(:exist?).with("/etc/chef/secure/client.pem").and_return(false)
   end
 
   subject(:cli) do
@@ -146,7 +148,7 @@ describe ChefInit::CLI do
       end
     end
 
-    context "client-mode files already exists" do
+    context "server-mode files already exists" do
       let(:argv) { %w[ --onboot ] }
 
       before do
@@ -158,6 +160,22 @@ describe ChefInit::CLI do
         expect(cli).to receive(:set_server_mode_defaults)
         expect(cli).not_to receive(:exit)
         cli.handle_options
+      end
+    end
+
+    context "server-mode but validator and client keys are missing" do
+      let(:argv) { %w[ --onboot ] }
+
+      before do
+        File.stub(:exist?).with("/etc/chef/secure/validation.pem").and_return(false)
+        File.stub(:exist?).with("/etc/chef/secure/client.pem").and_return(false)
+        cli.stub(:set_default_options)
+      end
+
+      it "should error out and print a message" do
+        expect(cli).to receive(:exit).with(1)
+        cli.handle_options
+        expect(stderr).to eql("File /etc/chef/secure/validator.pem is missing. Please make sure your secure credentials are accessible to the running container.\n")
       end
     end
   end
