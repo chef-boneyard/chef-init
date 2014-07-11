@@ -113,11 +113,6 @@ module ChefInit
         msg "ChefInit Version: #{ChefInit::VERSION}"
         exit 0
       else
-        unless (File.exist?("/etc/chef/secure/validation.pem") || File.exist?("/etc/chef/secure/client.pem"))
-          err "File /etc/chef/secure/validator.pem is missing. Please make sure your secure credentials are accessible to the running container."
-          exit 1
-        end
-
         unless config[:onboot] || config[:bootstrap] || !cli_arguments.empty?
           err "You must pass in either the --onboot or --bootstrap flag."
           exit 1
@@ -136,6 +131,11 @@ module ChefInit
       if File.exist?("/etc/chef/zero.rb") || config[:local_mode]
         set_local_mode_defaults
       elsif File.exist?("/etc/chef/client.rb")
+        unless (File.exist?("/etc/chef/secure/validation.pem") || File.exist?("/etc/chef/secure/client.pem"))
+          err "File /etc/chef/secure/validator.pem is missing. Please make sure your secure credentials are accessible to the running container."
+          exit 1
+        end
+
         set_server_mode_defaults
       else
         err "Cannot find a valid configuration file in /etc/chef"
