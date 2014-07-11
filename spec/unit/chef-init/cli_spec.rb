@@ -38,6 +38,7 @@ describe ChefInit::CLI do
 
     # by default, we are running in local-mode
     File.stub(:exist?).with("/etc/chef/zero.rb").and_return(true)
+    File.stub(:exist?).with("/etc/chef/.node_name").and_return(false)
   end
 
   subject(:cli) do
@@ -297,6 +298,7 @@ describe ChefInit::CLI do
       cli.stub(:wait_for_supervisor)
       cli.stub(:run_chef_client)
       cli.stub(:delete_client_key)
+      cli.stub(:delete_node_name_file)
       Process.stub(:kill)
     end
 
@@ -326,6 +328,12 @@ describe ChefInit::CLI do
 
     it "should delete the client key after chef-client is finished" do
       expect(cli).to receive(:delete_client_key)
+      expect(cli).to receive(:exit).with(0)
+      cli.launch_bootstrap
+    end
+
+    it "should delete the node name file if it exists" do
+      expect(cli).to receive(:delete_node_name_file)
       expect(cli).to receive(:exit).with(0)
       cli.launch_bootstrap
     end

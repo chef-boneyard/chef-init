@@ -206,6 +206,7 @@ module ChefInit
 
       ChefInit::Log.info("Deleting client key...")
       delete_client_key
+      delete_node_name_file
 
       Process.kill("TERM", @supervisor)
       exit 0
@@ -255,6 +256,10 @@ module ChefInit
 
     def delete_client_key
       File.delete("/etc/chef/client.pem") if File.exist?("/etc/chef/client.pem")
+    end
+
+    def delete_node_name_file
+      File.delete("/etc/chef/.node_name") if File.exist?("/etc/chef/.node_name")
     end
 
     def delete_validation_key

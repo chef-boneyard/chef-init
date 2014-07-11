@@ -31,6 +31,17 @@ describe ChefInit do
       end
     end
 
+    context "when .node_name file exists" do
+      before do
+        File.stub(:exist?).with("/etc/chef/.node_name").and_return(true)
+        File.stub(:read).with("/etc/chef/.node_name").and_return("docker-demo-build")
+      end
+
+      it "should return the contents of the file" do
+        expect(ChefInit.node_name).to eql("docker-demo-build")
+      end
+    end
+
     context "by default" do
       it "should return nil" do
         expect(ChefInit.node_name).to eql(nil)

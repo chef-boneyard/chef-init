@@ -24,14 +24,19 @@ module ChefInit
   # The order of precedence for the node name is as follows (from highest to lowest)
   #
   # => ENV['CHEF_NODE_NAME']
+  # => Looking for a file with the node name inside it
   # => Some future algorithm that will use the container API
   # => nil
   def self.node_name
     case
-      
+
     # Highest order of precedence is an environment variable
     when ! ENV['CHEF_NODE_NAME'].nil?
       ENV['CHEF_NODE_NAME']
+
+    # Next order, look for the .node_name file in /etc/chef
+    when File.exist?('/etc/chef/.node_name')
+      File.read('/etc/chef/.node_name').strip
 
     # Default is nil, which will cause Chef to take over
     else
