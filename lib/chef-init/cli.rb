@@ -113,6 +113,11 @@ module ChefInit
         msg "ChefInit Version: #{ChefInit::VERSION}"
         exit 0
       else
+        unless (File.exist?("/etc/chef/secure/validation.pem") || File.exist?("/etc/chef/secure/client.pem"))
+          err "File /etc/chef/secure/validator.pem is missing. Please make sure your secure credentials are accessible to the running container."
+          exit 1
+        end
+
         unless config[:onboot] || config[:bootstrap] || !cli_arguments.empty?
           err "You must pass in either the --onboot or --bootstrap flag."
           exit 1
@@ -255,7 +260,7 @@ module ChefInit
     end
 
     def delete_client_key
-      File.delete("/etc/chef/client.pem") if File.exist?("/etc/chef/client.pem")
+      File.delete("/etc/chef/secure/client.pem") if File.exist?("/etc/chef/secure/client.pem")
     end
 
     def delete_node_name_file
@@ -263,7 +268,7 @@ module ChefInit
     end
 
     def delete_validation_key
-      File.delete("/etc/chef/validation.pem") if File.exist?("/etc/chef/validation.pem")
+      File.delete("/etc/chef/secure/validation.pem") if File.exist?("/etc/chef/secure/validation.pem")
     end
 
     ##
