@@ -125,9 +125,9 @@ module ChefInit
     end
 
     def set_default_options
-      if File.exist?("/etc/chef/zero.rb") || (config.key?(:config_file) && config[:config_file].match?(/^.*zero\.rb$/)) || config[:local_mode]
+      if File.exist?("/etc/chef/zero.rb") || (config.key?(:config_file) && config[:config_file].match(/^.*zero\.rb$/)) || config[:local_mode]
         set_local_mode_defaults
-      elsif File.exist?("/etc/chef/client.rb") || (config.key?(:config_file) && config[:config_file].match?(/^.*client\.rb$/))
+      elsif File.exist?("/etc/chef/client.rb") || (config.key?(:config_file) && config[:config_file].match(/^.*client\.rb$/))
         unless (File.exist?("/etc/chef/secure/validation.pem") || File.exist?("/etc/chef/secure/client.pem"))
           err "File /etc/chef/secure/validator.pem is missing. Please make sure your secure credentials are accessible to the running container."
           exit 1
