@@ -71,7 +71,7 @@ module ChefInit
       :default      => "info"
 
     option :environment,
-      :short        => "-E ENVRIONMENT",
+      :short        => "-E ENVIRONMENT",
       :long         => "--environment",
       :description  => "Set the Chef Environment on the node"
 
