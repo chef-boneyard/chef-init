@@ -133,7 +133,7 @@ module ChefInit
       ChefInit::Log.info("-" * 20)
       ChefInit::Log.debug("Attempting to run command: #{omnibus_bin_dir}/chef-init --onboot -c #{tempdir}/zero.rb -j #{tempdir}/first-boot.json")
       output = system_command("#{omnibus_bin_dir}/chef-init --onboot -c #{tempdir}/zero.rb -j #{tempdir}/first-boot.json --log_level debug")
-      ChefInit::Log.debugs(output.stderr)
+      ChefInit::Log.debug(output.stderr)
       ChefInit::Log.debug(output.stdout)
 
       # give it a few seconds to setup
