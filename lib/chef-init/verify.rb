@@ -170,7 +170,7 @@ module ChefInit
         f.write(first_boot_string)
       end
 
-      test_cookbook_path = File.join(tempdir, 'cookbooks')
+      test_cookbook_path = File.join(tempdir, 'cookbooks', 'test')
       FileUtils.mkdir_p(test_cookbook_path)
       File.open(File.join(test_cookbook_path, 'metadata.rb'), "w") do |f|
         f.write(metadata_string)

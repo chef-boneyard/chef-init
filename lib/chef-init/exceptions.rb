@@ -29,6 +29,12 @@ module ChefInit
         super("Can not find omnibus installation directory for Chef.")
       end
     end
+
+    class ChefClientRunFailure < RuntimeError
+      def initialize
+        super("Chef Client run failed.")
+      end
+    end
   end
 end
 
