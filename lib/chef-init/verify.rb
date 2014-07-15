@@ -122,6 +122,8 @@ module ChefInit
       ChefInit::Log.info("-" * 20)
       ChefInit::Log.debug("Attempting to run command: #{omnibus_bin_dir}/chef-init --bootstrap -c #{tempdir}/zero.rb -j #{tempdir}/first-boot.json")
       system_command("#{omnibus_bin_dir}/chef-init --bootstrap -c #{tempdir}/zero.rb -j #{tempdir}/first-boot.json")
+      ChefInit::Log.debug(output.stderr)
+      ChefInit::Log.debug(output.stdout)
     end
 
     ##
@@ -142,6 +144,8 @@ module ChefInit
       # Does it start the runit process?
       runsvdir_started = ChefInit::Test.new("runsvdir started")
       output = system_command("ps aux | grep runsvdi[r]")
+      ChefInit::Log.debug(output.stderr)
+      ChefInit::Log.debug(output.stdout)
       unless output.stdout.empty?
         runsvdir_started.pass
       else
@@ -151,6 +155,8 @@ module ChefInit
       # Do services start?
       enabled_services_started = ChefInit::Test.new("enabled services started")
       output = system_command("ps aux | grep polip[o]")
+      ChefInit::Log.debug(output.stderr)
+      ChefInit::Log.debug(output.stdout)
       unless output.stdout.empty?
         enabled_services_started.pass
       else
@@ -184,12 +190,20 @@ module ChefInit
     end
 
     def cleanup_test_environment
-      system_command("sudo /opt/chef/embedded/bin/sv shutdown /opt/chef/service/*")
+      ChefInit::Log.debug("Cleaning up environment")
+      output = system_command("sudo /opt/chef/embedded/bin/sv shutdown /opt/chef/service/*")
+      # sv shutdown allows 7 seconds for services to shut down, giving it 10
+      sleep(10)
+
+      ChefInit::Log.debug(output.stderr)
+      ChefInit::Log.debug(output.stdout)
       FileUtils.rm_rf(File.join(tempdir, 'zero.rb'))
       FileUtils.rm_rf(File.join(tempdir, 'first-boot.json'))
       FileUtils.rm_rf('/opt/chef/sv')
       FileUtils.rm_rf('/opt/chef/service')
-      system_command("sudo apt-get -y remove --purge polipo")
+      output = system_command("sudo apt-get -y remove --purge polipo")
+      ChefInit::Log.debug(output.stderr)
+      ChefInit::Log.debug(output.stdout)
       clear_tempdir
     end
 
