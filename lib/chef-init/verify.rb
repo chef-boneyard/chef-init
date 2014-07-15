@@ -187,8 +187,8 @@ module ChefInit
       system_command("sudo /opt/chef/embedded/bin/sv shutdown /opt/chef/service/*")
       FileUtils.rm_rf(File.join(tempdir, 'zero.rb'))
       FileUtils.rm_rf(File.join(tempdir, 'first-boot.json'))
-      FileUtils.rm_rf('/etc/chef/sv')
-      FileUtils.rm_rf('/etc/chef/service')
+      FileUtils.rm_rf('/opt/chef/sv')
+      FileUtils.rm_rf('/opt/chef/service')
       system_command("sudo apt-get -y remove --purge polipo")
       clear_tempdir
     end
