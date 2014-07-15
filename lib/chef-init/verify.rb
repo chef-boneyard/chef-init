@@ -57,7 +57,9 @@ module ChefInit
       binaries_run?
       setup_test_environment
       run_bootstrap_tests
+      cleanup_bootstrap_environment
       run_onboot_tests
+      cleanup_onboot_environment
       cleanup_test_environment
 
       if ChefInit::Test.did_pass?
@@ -133,13 +135,10 @@ module ChefInit
       ChefInit::Log.info("-" * 20)
       ChefInit::Log.info("Running tests for `chef-init --onboot`")
       ChefInit::Log.info("-" * 20)
-      ChefInit::Log.debug("Attempting to run command: #{omnibus_bin_dir}/chef-init --onboot -c #{tempdir}/zero.rb -j #{tempdir}/first-boot.json")
+      ChefInit::Log.debug("Attempting to run command: #{omnibus_bin_dir}/chef-init --onboot -c #{tempdir}/zero.rb -j #{tempdir}/first-boot.json --log_level debug")
       output = system_command("#{omnibus_bin_dir}/chef-init --onboot -c #{tempdir}/zero.rb -j #{tempdir}/first-boot.json --log_level debug")
       ChefInit::Log.debug(output.stderr)
       ChefInit::Log.debug(output.stdout)
-
-      # give it a few seconds to setup
-      sleep 10
 
       # Does it start the runit process?
       runsvdir_started = ChefInit::Test.new("runsvdir started")
@@ -189,14 +188,31 @@ module ChefInit
       end
     end
 
-    def cleanup_test_environment
-      ChefInit::Log.debug("Cleaning up environment")
+    def cleanup_bootstrap_environment
+      ChefInit::Log.debug("Cleaning up bootstrap environment")
+      FileUtils.rm_rf('/opt/chef/sv')
+      FileUtils.rm_rf('/opt/chef/service')
+      output = system_command("sudo apt-get -y remove --purge polipo")
+      ChefInit::Log.debug(output.stderr)
+      ChefInit::Log.debug(output.stdout)
+    end
+
+    def cleanup_onboot_environment
+      ChefInit::Log.debug("Cleaning up onboot environment")
       output = system_command("sudo /opt/chef/embedded/bin/sv shutdown /opt/chef/service/*")
       # sv shutdown allows 7 seconds for services to shut down, giving it 10
       sleep(10)
-
       ChefInit::Log.debug(output.stderr)
       ChefInit::Log.debug(output.stdout)
+      FileUtils.rm_rf('/opt/chef/sv')
+      FileUtils.rm_rf('/opt/chef/service')
+      output = system_command("sudo apt-get -y remove --purge polipo")
+      ChefInit::Log.debug(output.stderr)
+      ChefInit::Log.debug(output.stdout)
+    end
+
+    def cleanup_test_environment
+      ChefInit::Log.debug("Cleaning up testing environment")
       FileUtils.rm_rf(File.join(tempdir, 'zero.rb'))
       FileUtils.rm_rf(File.join(tempdir, 'first-boot.json'))
       FileUtils.rm_rf('/opt/chef/sv')
