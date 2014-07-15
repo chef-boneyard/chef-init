@@ -75,18 +75,6 @@ module ChefInit
       :long         => "--environment",
       :description  => "Set the Chef Environment on the node"
 
-    option :onboot,
-      :long => "--onboot",
-      :description => "",
-      :boolean => true,
-      :default => false
-
-    option :log_level,
-      :short        => "-l LEVEL",
-      :long         => "--log_level LEVEL",
-      :description  => "Set the log level (debug, info, warn, error, fatal)",
-      :default      => "info"
-
     option :version,
       :short        => "-v",
       :long         => "--version",
@@ -105,7 +93,7 @@ module ChefInit
       case
       when config[:version]
         msg "ChefInit Version: #{ChefInit::VERSION}"
-        exit 0        
+        exit 0
       when config[:onboot] && config[:bootstrap]
           err "You must pass in either the --onboot OR the --bootstrap flag, but not both."
           exit 1
@@ -230,11 +218,7 @@ module ChefInit
         while line = stdout_err.gets
           puts line
         end
-        exit_status = wait_thr.value.to_i
-        if exit_status != 0
-          raise ChefClientRunFailure.new()
-        end
-        wait_thr.pid
+        wait_thr.value.to_i
       end
     end
 

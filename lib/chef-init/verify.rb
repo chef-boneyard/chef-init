@@ -121,7 +121,7 @@ module ChefInit
       ChefInit::Log.info("Running tests for `chef-init --bootstrap`")
       ChefInit::Log.info("-" * 20)
       ChefInit::Log.debug("Attempting to run command: #{omnibus_bin_dir}/chef-init --bootstrap -c #{tempdir}/zero.rb -j #{tempdir}/first-boot.json")
-      system_command("#{omnibus_bin_dir}/chef-init --bootstrap -c #{tempdir}/zero.rb -j #{tempdir}/first-boot.json")
+      output = system_command("#{omnibus_bin_dir}/chef-init --bootstrap -c #{tempdir}/zero.rb -j #{tempdir}/first-boot.json")
       ChefInit::Log.debug(output.stderr)
       ChefInit::Log.debug(output.stdout)
     end
@@ -231,6 +231,23 @@ require 'chef-init'
 
 cookbook_path   ["#{tempdir}/cookbooks"]
 ssl_verify_mode   :verify_peer
+Ohai::Config[:disabled_plugins] = [
+            :NetworkRoutes,
+            :NetworkListeners,
+            :inet,
+            :inet6,
+            :SystemProfile,
+            :ip_scopes,
+            :Java,
+            :Groovy,
+            :Erlang,
+            :Mono,
+            :Lua,
+            :PHP,
+            :Nodejs,
+            :GCE,
+            :Rackspace
+]
       ZERO_CONFIG
     end
 
