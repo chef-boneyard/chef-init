@@ -17,6 +17,7 @@
 
 require 'chef-init/version'
 require 'chef-init/helpers'
+require 'chef-init/verify'
 require 'mixlib/cli'
 require 'open3'
 
@@ -58,6 +59,11 @@ module ChefInit
       :boolean      => true,
       :default      => false
 
+    option :verify,
+      :long         => "--verify",
+      :description  => "Verify installation",
+      :boolean      => true
+
     option :log_level,
       :short        => "-l LEVEL",
       :long         => "--log_level LEVEL",
@@ -65,7 +71,7 @@ module ChefInit
       :default      => "info"
 
     option :environment,
-      :short        => "-E ENVRIONMENT",
+      :short        => "-E ENVIRONMENT",
       :long         => "--environment",
       :description  => "Set the Chef Environment on the node"
 
@@ -93,49 +99,39 @@ module ChefInit
     end
 
     def run
-      handle_options
-
-      if config[:onboot]
-        launch_onboot
-      elsif config[:bootstrap]
-        launch_bootstrap
-      end
-    end
-
-    ##
-    # Configuration Methods
-    #
-    def handle_options
       parse_options(@argv)
-      set_default_options
+      ChefInit::Log.level = config[:log_level].to_sym
 
-      if config[:version]
+      case
+      when config[:version]
         msg "ChefInit Version: #{ChefInit::VERSION}"
-        exit 0
-      else
-        unless config[:onboot] || config[:bootstrap] || !cli_arguments.empty?
-          err "You must pass in either the --onboot or --bootstrap flag."
-          exit 1
-        end
-
-        if config[:onboot] && config[:bootstrap]
+        exit 0        
+      when config[:onboot] && config[:bootstrap]
           err "You must pass in either the --onboot OR the --bootstrap flag, but not both."
           exit 1
-        end
-
-        ChefInit::Log.level = config[:log_level].to_sym
+      when config[:onboot]
+        set_default_options
+        launch_onboot
+      when config[:bootstrap]
+        set_default_options
+        launch_bootstrap
+      when config[:verify]
+        verify = ChefInit::Verify.new
+        verify.run
+      else
+        err "You must pass in either the --onboot, --bootstrap, or --verify flag."
+        exit 1
       end
     end
 
     def set_default_options
-      if File.exist?("/etc/chef/zero.rb") || config[:local_mode]
+      if File.exist?("/etc/chef/zero.rb") || (config.key?(:config_file) && config[:config_file].match(/^.*zero\.rb$/)) || config[:local_mode]
         set_local_mode_defaults
-      elsif File.exist?("/etc/chef/client.rb")
+      elsif File.exist?("/etc/chef/client.rb") || (config.key?(:config_file) && config[:config_file].match(/^.*client\.rb$/))
         unless (File.exist?("/etc/chef/secure/validation.pem") || File.exist?("/etc/chef/secure/client.pem"))
           err "File /etc/chef/secure/validator.pem is missing. Please make sure your secure credentials are accessible to the running container."
           exit 1
         end
-
         set_server_mode_defaults
       else
         err "Cannot find a valid configuration file in /etc/chef"
@@ -234,7 +230,11 @@ module ChefInit
         while line = stdout_err.gets
           puts line
         end
-        wait_thr.value.to_i
+        exit_status = wait_thr.value.to_i
+        if exit_status != 0
+          raise ChefClientRunFailure.new()
+        end
+        wait_thr.pid
       end
     end
 

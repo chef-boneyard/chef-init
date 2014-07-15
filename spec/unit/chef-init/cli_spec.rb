@@ -56,13 +56,23 @@ describe ChefInit::CLI do
       cli.stub(:launch_bootstrap)
     end
 
-    it "should parse options" do
-      expect(cli).to receive(:handle_options)
-      cli.run
+    context "when the application starts" do
+      let(:argv) { %w[ --version ] }
+
+      it "should parse the input" do
+        expect(cli).to receive(:parse_options).and_call_original
+        expect(cli).to receive(:exit).with(0)
+        cli.run
+      end
     end
 
     context "when onboot flag is passed" do
       let(:argv) { %w[ --onboot ] }
+
+      it "should set default options" do
+        expect(cli).to receive(:set_default_options)
+        cli.run
+      end
 
       it "should launch onboot steps" do
         expect(cli).to receive(:launch_onboot)
@@ -73,30 +83,34 @@ describe ChefInit::CLI do
     context "when bootstrap flag is passed" do
       let(:argv) { %w[ --bootstrap ] }
 
+      it "should set default options" do
+        expect(cli).to receive(:set_default_options)
+        cli.run
+      end
+
       it "should launch build steps" do
         expect(cli).to receive(:launch_bootstrap)
         cli.run
       end
     end
-  end
 
-  describe "#handle_options" do
-    context "default behavior" do
-      let(:argv) { ["--bootstrap"] }
+    context "when --verify flag is passed" do
+      let(:argv) { %w[ --verify ] }
+      let(:verify) { double("ChefInit::Verify", run: nil) }
 
-      it "should parse the input" do
-        expect(cli).to receive(:parse_options).and_call_original
-        cli.handle_options
+      it "should run a verification process" do
+        ChefInit::Verify.stub(:new).and_return(verify)
+        expect(verify).to receive(:run)
+        cli.run
       end
+    end
 
-      it "should set default options" do
-        expect(cli).to receive(:set_default_options)
-        cli.handle_options
-      end
-
-      it "should set the log level" do
-        expect(ChefInit::Log.level).to eql(:info)
-        cli.handle_options
+    context "given no arguments or options" do
+      let(:argv) { [] }
+      it "alerts that you must pass in a flag or arguments" do
+        expect(cli).to receive(:exit).with(1)
+        cli.run
+        expect(stderr).to eql("You must pass in either the --onboot, --bootstrap, or --verify flag.\n")
       end
     end
 
@@ -106,62 +120,20 @@ describe ChefInit::CLI do
 
       it "should return the version number and then quit" do
         expect(cli).to receive(:exit).with(0)
-        cli.handle_options
+        cli.run
         expect(stdout).to eql(version_message)
       end
-    end
-
-    context "given no arguments or options" do
-      let(:argv) { [] }
-      it "alerts that you must pass in a flag or arguments" do
-        expect(cli).to receive(:exit).with(1)
-        cli.handle_options
-        expect(stderr).to eql("You must pass in either the --onboot or --bootstrap flag.\n")
-      end
-    end
-
-    context "given an invalid/unknown option" do
-      it "gives an 'unknown option' message, the help output and exits with 1"
     end
 
     context "both bootstrap and onboot flags are given" do
       let(:argv) { %w[ --onboot --bootstrap ]}
       it "gives an 'invalid option' message, the help output and exits with 1" do
         expect(cli).to receive(:exit).with(1)
-        cli.handle_options
+        cli.run
         expect(stderr).to eql("You must pass in either the --onboot OR the --bootstrap flag, but not both.\n")
       end
     end
 
-    context "local-mode config file already exists" do
-      let(:argv) { %w[ --onboot ] }
-
-      before do
-        File.stub(:exist?).with("/etc/chef/zero.rb").and_return(true)
-        File.stub(:exist?).with("/etc/chef/client.rb").and_return(false)
-      end
-
-      it "should default to local_mode" do
-        expect(cli).to receive(:set_local_mode_defaults)
-        expect(cli).not_to receive(:exit)
-        cli.handle_options
-      end
-    end
-
-    context "server-mode files already exists" do
-      let(:argv) { %w[ --onboot ] }
-
-      before do
-        File.stub(:exist?).with("/etc/chef/zero.rb").and_return(false)
-        File.stub(:exist?).with("/etc/chef/client.rb").and_return(true)
-      end
-
-      it "should default to client mode" do
-        expect(cli).to receive(:set_server_mode_defaults)
-        expect(cli).not_to receive(:exit)
-        cli.handle_options
-      end
-    end
   end
 
   describe "#set_default_options" do
@@ -446,7 +418,7 @@ describe ChefInit::CLI do
       end
 
       it "should return local-mode command" do
-        cli.handle_options
+        cli.set_default_options
         command = cli.chef_client_command
         expect(command).to eql("chef-client -c /etc/chef/zero.rb -j /etc/chef/first-boot.json -z -l info")
       end
@@ -457,10 +429,16 @@ describe ChefInit::CLI do
       before do
         File.stub(:exist?).with("/etc/chef/zero.rb").and_return(false)
         File.stub(:exist?).with("/etc/chef/client.rb").and_return(true)
+        cli.stub(:launch_supervisor)
+        cli.stub(:wait_for_supervisor)
+        cli.stub(:run_chef_client)
+        cli.stub(:delete_client_key)
+        Process.stub(:kill).with("TERM", nil)
       end
 
       it "should pass through the environment variable" do
-        cli.handle_options
+        expect(cli).to receive(:exit).with(0)
+        cli.run
         command = cli.chef_client_command
         expect(command).to eql("chef-client -c /etc/chef/client.rb -j /etc/chef/first-boot.json -l info -E prod")
       end
@@ -471,10 +449,16 @@ describe ChefInit::CLI do
       before do
         File.stub(:exist?).with("/etc/chef/zero.rb").and_return(false)
         File.stub(:exist?).with("/etc/chef/client.rb").and_return(true)
+        cli.stub(:launch_supervisor)
+        cli.stub(:wait_for_supervisor)
+        cli.stub(:run_chef_client)
+        cli.stub(:delete_client_key)
+        Process.stub(:kill).with("TERM", nil)
       end
 
       it "should return server-mode command" do
-        cli.handle_options
+        expect(cli).to receive(:exit).with(0)
+        cli.run
         command = cli.chef_client_command
         expect(command).to eql("chef-client -c /etc/chef/client.rb -j /etc/chef/first-boot.json -l info")
       end
