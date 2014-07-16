@@ -123,7 +123,7 @@ module ChefInit
       ChefInit::Log.info("Running tests for `chef-init --bootstrap`")
       ChefInit::Log.info("-" * 20)
       ChefInit::Log.debug("Attempting to run command: #{omnibus_bin_dir}/chef-init --bootstrap -c #{tempdir}/zero.rb -j #{tempdir}/first-boot.json")
-      output = system_command("#{omnibus_bin_dir}/chef-init --bootstrap -c #{tempdir}/zero.rb -j #{tempdir}/first-boot.json")
+      output = system_command("#{omnibus_bin_dir}/chef-init --bootstrap -c #{tempdir}/zero.rb -j #{tempdir}/first-boot.json --log_level debug")
       ChefInit::Log.debug(output.stderr)
       ChefInit::Log.debug(output.stdout)
     end
@@ -190,6 +190,11 @@ module ChefInit
 
     def cleanup_bootstrap_environment
       ChefInit::Log.debug("Cleaning up bootstrap environment")
+      output = system_command("sudo /opt/chef/embedded/bin/sv shutdown /opt/chef/service/*")
+      # sv shutdown allows 7 seconds for services to shut down, giving it 10
+      sleep(10)
+      ChefInit::Log.debug(output.stderr)
+      ChefInit::Log.debug(output.stdout)
       FileUtils.rm_rf('/opt/chef/sv')
       FileUtils.rm_rf('/opt/chef/service')
       output = system_command("sudo apt-get -y remove --purge polipo")
