@@ -218,7 +218,7 @@ module ChefInit
         while line = stdout_err.gets
           puts line
         end
-        wait_thr.value.to_i
+        wait_thr.pid
       end
     end
 
