@@ -15,6 +15,7 @@
 # limitations under the License.
 #
 
+require 'chef/provider/container_service'
 require 'chef/resource/container_service'
 
 module ChefInit

@@ -17,8 +17,32 @@
 
 require 'spec_helper'
 require 'chef-init'
+require 'chef/platform'
+require 'chef/node'
 
 describe ChefInit do
+
+  describe "`service` resource" do
+
+    context "when the container_service node attribute is present" do
+
+      it "sets the provider to ContainerService::Runit" do
+        node = Chef::Node.new
+        node.name("foo")
+        node.normal_attrs[:container_service][:foo][:command] = "/usr/bin/foo"
+        node.automatic_attrs[:platform] = "ubuntu"
+        node.automatic_attrs[:platform_version] = "12.04"
+
+        events = Chef::EventDispatch::Dispatcher.new
+        run_context = Chef::RunContext.new(node, {},  events)
+
+        service = Chef::Resource::Service.new("foo", run_context)
+
+        expect(service.provider).to eql(Chef::Provider::ContainerService::Runit)
+      end
+
+    end
+  end
 
   describe ".node_name" do
 
