@@ -31,12 +31,12 @@ describe Chef::Provider::ContainerService::Runit do
     @events = Chef::EventDispatch::Dispatcher.new
     @run_context = Chef::RunContext.new(@node, {},  @events)
 
-    @new_resource = Chef::Resource::ContainerService.new("foo", @run_context)
-    @current_resource = Chef::Resource::ContainerService.new("foo", @run_context)
+    @new_resource = Chef::Resource::Service.new("foo", @run_context)
+    @current_resource = Chef::Resource::Service.new("foo", @run_context)
 
     @provider = Chef::Provider::ContainerService::Runit.new(@new_resource, @run_context)
 
-    Chef::Resource::ContainerService.stub(:new).and_return(@current_resource)
+    Chef::Resource::Service.stub(:new).and_return(@current_resource)
   end
 
   describe "#initialize" do
@@ -99,8 +99,8 @@ describe Chef::Provider::ContainerService::Runit do
       end
     end
 
-    it "should inspect current state of system and return a new Chef::Resource::Supervisor object" do
-      expect(@provider.load_current_resource).to be_a_instance_of(Chef::Resource::ContainerService)
+    it "should inspect current state of system and return a new Chef::Resource::Service object" do
+      expect(@provider.load_current_resource).to be_a_instance_of(Chef::Resource::Service)
     end
   end
 

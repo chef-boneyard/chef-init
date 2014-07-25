@@ -18,36 +18,59 @@
 require 'spec_helper'
 require 'chef/resource/container_service'
 
-describe Chef::Resource::ContainerService do
+describe Chef::Resource::Service do
 
-  before(:each) do
-    @node = Chef::Node.new
-    @node.normal['container_service']['foo']['command'] = "/usr/bin/foo"
+  describe "when a node attribute with a service command is specified" do
+    before(:each) do
+      @node = Chef::Node.new
+      @node.normal['container_service']['foo']['command'] = "/usr/bin/foo"
 
-    @events = Chef::EventDispatch::Dispatcher.new
-    @run_context = Chef::RunContext.new(@node, {},  @events)
+      @events = Chef::EventDispatch::Dispatcher.new
+      @run_context = Chef::RunContext.new(@node, {},  @events)
 
-    @resource = Chef::Resource::ContainerService.new("foo", @run_context)
-  end
-
-  it 'should return a Chef::Resource::Supervisor' do
-    expect(@resource).to be_a_kind_of(Chef::Resource::ContainerService)
-  end
-
-  it 'should be a sub-class of Chef::Resource::Service' do
-    expect(@resource).to be_a_kind_of(Chef::Resource::Service)
-  end
-
-  it 'should have a resource name of :service' do
-    expect(@resource.resource_name).to eql(:service)
-  end
-
-  context "when a node attribute with a service command is specified" do
-
-    it 'should have a provider of Chef::Provider::ContainerService::Runit' do
-      expect(@resource.provider).to eql(Chef::Provider::ContainerService::Runit)
+      @resource = Chef::Resource::Service.new("foo", @run_context)
     end
 
+    it 'has a provider of Chef::Provider::ContainerService::Runit' do
+      expect(@resource.provider).to eql(Chef::Provider::ContainerService::Runit)
+    end
+  end
+
+  describe "#container_service_command_specified?" do
+    context "when the command attribute is specified" do
+      it "returns true" do
+        node = Chef::Node.new
+        node.normal['container_service']['foo']['command'] = "/usr/bin/foo"
+        events = Chef::EventDispatch::Dispatcher.new
+        run_context = Chef::RunContext.new(node, {},  events)
+
+        resource = Chef::Resource::Service.new("foo", run_context)
+        expect(resource.container_service_command_specified?).to eql(true)
+      end
+    end
+
+    context "when another command is specified" do
+      it "returns false" do
+        node = Chef::Node.new
+        node.normal['container_service']['bar']['command'] = "/usr/bin/bar"
+        events = Chef::EventDispatch::Dispatcher.new
+        run_context = Chef::RunContext.new(node, {},  events)
+
+        resource = Chef::Resource::Service.new("foo", run_context)
+        expect(resource.container_service_command_specified?).to eql(false)
+      end
+    end
+
+    context "when no command attribute is specified" do
+      it "returns false" do
+        node = Chef::Node.new
+        events = Chef::EventDispatch::Dispatcher.new
+        run_context = Chef::RunContext.new(node, {},  events)
+
+        resource = Chef::Resource::Service.new("foo", run_context)
+        expect(resource.container_service_command_specified?).to eql(false)
+      end
+    end
   end
 
 end
