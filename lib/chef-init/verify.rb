@@ -122,10 +122,18 @@ module ChefInit
       ChefInit::Log.info("-" * 20)
       ChefInit::Log.info("Running tests for `chef-init --bootstrap`")
       ChefInit::Log.info("-" * 20)
-      ChefInit::Log.debug("Attempting to run command: #{omnibus_bin_dir}/chef-init --bootstrap -c #{tempdir}/zero.rb -j #{tempdir}/first-boot.json")
-      output = system_command("#{omnibus_bin_dir}/chef-init --bootstrap -c #{tempdir}/zero.rb -j #{tempdir}/first-boot.json --log_level debug")
+
+      # Does a failed chef run cause chef-init --bootstrap to exit with a non-zero?
+      bad_chef_run = ChefInit::Test.new("chef-client exit codes are honored")
+      ChefInit::Log.debug("Attempting to run command: #{omnibus_bin_dir}/chef-init --bootstrap -c #{tempdir}/zero.rb -j #{tempdir}/bad-first-boot.json")
+      output = system_command("#{omnibus_bin_dir}/chef-init --bootstrap -c #{tempdir}/zero.rb -j #{tempdir}/bad-first-boot.json --log_level debug")
       ChefInit::Log.debug(output.stderr)
       ChefInit::Log.debug(output.stdout)
+      unless output.exitstatus != 0
+        bad_chef_run.pass
+      else
+        bad_chef_run.fail "bootstrap: chef-init does not honor exit code from chef-client"
+      end
     end
 
     ##
@@ -136,7 +144,7 @@ module ChefInit
       ChefInit::Log.info("Running tests for `chef-init --onboot`")
       ChefInit::Log.info("-" * 20)
       ChefInit::Log.debug("Attempting to run command: #{omnibus_bin_dir}/chef-init --onboot -c #{tempdir}/zero.rb -j #{tempdir}/first-boot.json --log_level debug")
-      output = system_command("#{omnibus_bin_dir}/chef-init --onboot -c #{tempdir}/zero.rb -j #{tempdir}/first-boot.json --log_level debug")
+      output = system_command("#{omnibus_bin_dir}/chef-init --onboot -c #{tempdir}/zero.rb -j #{tempdir}/good-first-boot.json --log_level debug")
       ChefInit::Log.debug(output.stderr)
       ChefInit::Log.debug(output.stdout)
 
@@ -167,25 +175,8 @@ module ChefInit
     # Helper Methods
     #
     def setup_test_environment
-      # chef-init requirements
-      File.open(File.join(tempdir, 'zero.rb'), "w") do |f|
-        f.write(zero_config_string)
-      end
-      File.open(File.join(tempdir, 'first-boot.json'), "w") do |f|
-        f.write(first_boot_string)
-      end
-
-      test_cookbook_path = File.join(tempdir, 'cookbooks', 'test')
-      FileUtils.mkdir_p(test_cookbook_path)
-      File.open(File.join(test_cookbook_path, 'metadata.rb'), "w") do |f|
-        f.write(metadata_string)
-      end
-
-      test_recipe_path = File.join(test_cookbook_path, 'recipes')
-      FileUtils.mkdir_p(test_recipe_path)
-      File.open(File.join(test_recipe_path, 'default.rb'), "w") do |f|
-        f.write(recipe_string)
-      end
+      # Copy the fixture data into the tempdir
+      FileUtils.cp_r File.expand_path(File.dirname(__FILE__) + \ "../../../../spec/data"), tempdir
     end
 
     def cleanup_bootstrap_environment
@@ -242,67 +233,5 @@ module ChefInit
       @tmpdir ||= Dir.mktmpdir("chef")
       File.realpath(@tmpdir)
     end
-
-
-    # I took these strings and put them into their own functions near the end so the code above is
-    # a little easier to read.
-    def zero_config_string
-      <<-ZERO_CONFIG
-require 'chef-init'
-
-cookbook_path   ["#{tempdir}/cookbooks"]
-ssl_verify_mode   :verify_peer
-Ohai::Config[:disabled_plugins] = [
-            :NetworkRoutes,
-            :NetworkListeners,
-            :inet,
-            :inet6,
-            :SystemProfile,
-            :ip_scopes,
-            :Java,
-            :Groovy,
-            :Erlang,
-            :Mono,
-            :Lua,
-            :PHP,
-            :Nodejs,
-            :GCE,
-            :Rackspace
-]
-      ZERO_CONFIG
-    end
-
-    def first_boot_string
-      <<-FIRST_BOOT
-{
-  "run_list": ["recipe[test]"],
-  "container_service": {
-    "polipo": {
-      "command": "/usr/bin/polipo"
-    }
-  }
-}
-      FIRST_BOOT
-    end
-
-    def metadata_string
-      <<-METADATA
-name "test"
-
-      METADATA
-    end
-
-    def recipe_string
-      <<-RECIPE
-package 'polipo' do
-  action :install
-end
-
-service 'polipo' do
-  action :start
-end
-      RECIPE
-    end
-
   end
 end
