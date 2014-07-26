@@ -1,0 +1,8 @@
+{
+  "run_list": ["recipe[polipo]"],
+  "container_service": {
+    "polipo": {
+      "command": "/usr/bin/polipo"
+    }
+  }
+}

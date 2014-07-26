@@ -156,7 +156,7 @@ module ChefInit
       @chef_client = run_chef_client
 
       ChefInit::Log.debug("Wait for chef-client to finish, then delete validation key")
-      Process.wait(@chef_client)
+      Process.wait(@chef_client.pid)
       delete_validation_key
 
       # Catch TERM signal and foward to supervisor
@@ -191,14 +191,14 @@ module ChefInit
       wait_for_supervisor
 
       ChefInit::Log.info("Starting chef-client run...")
-      run_chef_client
+      @chef_client = run_chef_client
 
       ChefInit::Log.info("Deleting client key...")
       delete_client_key
       delete_node_name_file
 
       Process.kill("TERM", @supervisor)
-      exit 0
+      exit @chef_client.value.to_i
     end
 
     def launch_supervisor
@@ -213,12 +213,15 @@ module ChefInit
       "#{omnibus_embedded_bin_dir}/runsvdir -P #{omnibus_root}/service 'log: #{ '.' * 395}'"
     end
 
+    ##
+    # Run the chef-client
+    # Returns a wait_thr object that has the exit status and pid
     def run_chef_client
       Open3.popen2e({"PATH" => path}, chef_client_command) do |stdin, stdout_err, wait_thr|
         while line = stdout_err.gets
           puts line
         end
-        wait_thr.pid
+        wait_thr
       end
     end
 
