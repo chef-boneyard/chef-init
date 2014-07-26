@@ -44,7 +44,7 @@ class Chef
         end
 
         def load_current_resource
-          @current_resource = Chef::Resource::Service.new(new_resource.name)
+          @current_resource = Chef::Resource::Service.new(new_resource.name, run_context)
           @current_resource.service_name(new_resource.service_name)
 
           setup
@@ -61,6 +61,9 @@ class Chef
         def setup
           Chef::Log.debug("Creating service staging directory for #{new_resource.service_name}")
           staging_dir.run_action(:create)
+
+          Chef::Log.debug("Creating service directory")
+          service_dir.run_action(:create)
 
           Chef::Log.debug("Creating down file for #{new_resource.service_name}")
           down_file.run_action(:create)
@@ -176,6 +179,14 @@ exec svlogd -tt /var/log/#{new_resource.service_name}"
           @staging_dir.recursive(true)
           @staging_dir.mode(00755)
           @staging_dir
+        end
+
+        def service_dir
+          return @service_dir unless @service_dir.nil?
+          @service_dir = Chef::Resource::Directory.new(::File.join(omnibus_root, "service"), run_context)
+          @service_dir.recursive(true)
+          @service_dir.mode(00755)
+          @service_dir
         end
 
         def run_script
