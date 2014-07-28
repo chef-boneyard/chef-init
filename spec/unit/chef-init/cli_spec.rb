@@ -210,12 +210,13 @@ describe ChefInit::CLI do
 
   describe "#launch_onboot" do
     let(:supervisor_pid) { 1000 }
+    let(:chefrun_process) { double("process object", value: "0", pid: 1001)}
 
     before do
       cli.stub(:print_welcome)
       cli.stub(:launch_supervisor).and_return(supervisor_pid)
       cli.stub(:wait_for_supervisor)
-      cli.stub(:run_chef_client)
+      cli.stub(:run_chef_client).and_return(chefrun_process)
       cli.stub(:delete_validation_key)
       Process.stub(:wait)
     end
@@ -280,12 +281,13 @@ describe ChefInit::CLI do
 
   describe "#launch_bootstrap" do
     let(:supervisor_pid) { 1000 }
+    let(:chefrun_process) { double("process object", value: "0", pid: 1001)}
 
     before do
       cli.stub(:print_welcome)
       cli.stub(:launch_supervisor).and_return(supervisor_pid)
       cli.stub(:wait_for_supervisor)
-      cli.stub(:run_chef_client)
+      cli.stub(:run_chef_client).and_return(chefrun_process)
       cli.stub(:delete_client_key)
       cli.stub(:delete_node_name_file)
       Process.stub(:kill)
@@ -426,12 +428,14 @@ describe ChefInit::CLI do
 
     context "environment is passed in" do
       let(:argv) { ["--bootstrap", "-E", "prod"] }
+      let(:chefrun_process) { double("process object", value: "0", pid: 1001)}
+
       before do
         File.stub(:exist?).with("/etc/chef/zero.rb").and_return(false)
         File.stub(:exist?).with("/etc/chef/client.rb").and_return(true)
         cli.stub(:launch_supervisor)
         cli.stub(:wait_for_supervisor)
-        cli.stub(:run_chef_client)
+        cli.stub(:run_chef_client).and_return(chefrun_process)
         cli.stub(:delete_client_key)
         Process.stub(:kill).with("TERM", nil)
       end
@@ -446,12 +450,14 @@ describe ChefInit::CLI do
 
     context "chef server-mode" do
       let(:argv) { ["--bootstrap"] }
+      let(:chefrun_process) { double("process object", value: "0", pid: 1001)}
+
       before do
         File.stub(:exist?).with("/etc/chef/zero.rb").and_return(false)
         File.stub(:exist?).with("/etc/chef/client.rb").and_return(true)
         cli.stub(:launch_supervisor)
         cli.stub(:wait_for_supervisor)
-        cli.stub(:run_chef_client)
+        cli.stub(:run_chef_client).and_return(chefrun_process)
         cli.stub(:delete_client_key)
         Process.stub(:kill).with("TERM", nil)
       end

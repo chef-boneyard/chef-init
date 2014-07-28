@@ -176,7 +176,7 @@ module ChefInit
     #
     def setup_test_environment
       # Copy the fixture data into the tempdir
-      FileUtils.cp_r File.expand_path(File.dirname(__FILE__) + \ "../../../../spec/data"), tempdir
+      FileUtils.cp_r File.expand_path(File.dirname(__FILE__) + "../../../../spec/data"), tempdir
     end
 
     def cleanup_bootstrap_environment
