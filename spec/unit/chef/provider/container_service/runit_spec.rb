@@ -106,6 +106,7 @@ describe Chef::Provider::ContainerService::Runit do
 
   describe "#setup" do
     let(:staging_dir) { double("staging_dir", run_action: nil) }
+    let(:service_dir) { double("service_dir", run_action: nil) }
     let(:down_file) { double("down_file", run_action: nil) }
     let(:run_script) { double("run_script", run_action: nil) }
     let(:log_dir) { double("log_dir", run_action: nil) }
@@ -115,6 +116,7 @@ describe Chef::Provider::ContainerService::Runit do
 
     before do
       @provider.stub(:staging_dir).and_return(staging_dir)
+      @provider.stub(:service_dir).and_return(service_dir)
       @provider.stub(:down_file).and_return(down_file)
       @provider.stub(:run_script).and_return(run_script)
       @provider.stub(:log_dir).and_return(log_dir)
@@ -127,6 +129,7 @@ describe Chef::Provider::ContainerService::Runit do
 
     it 'creates the service directory and run scripts' do
       expect(staging_dir).to receive(:run_action).with(:create)
+      expect(service_dir).to receive(:run_action).with(:create)
       expect(down_file).to receive(:run_action).with(:create)
       expect(run_script).to receive(:run_action).with(:create)
       expect(log_dir).to receive(:run_action).with(:create)
