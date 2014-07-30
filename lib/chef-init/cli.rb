@@ -232,10 +232,6 @@ module ChefInit
       end
     end
 
-    def path
-      "#{omnibus_root}/bin:#{omnibus_root}/embedded/bin:/usr/local/bin:/usr/local/sbin:/bin:/sbin:/usr/bin:/usr/sbin"
-    end
-
     def chef_client_command
       command = []
       command << "chef-client -c #{config[:config_file]} -j #{config[:json_attribs]}"
