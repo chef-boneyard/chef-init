@@ -93,10 +93,10 @@ module ChefInit
       case
       when config[:version]
         msg "ChefInit Version: #{ChefInit::VERSION}"
-        exit 0
+        exit true
       when config[:onboot] && config[:bootstrap]
           err "You must pass in either the --onboot OR the --bootstrap flag, but not both."
-          exit 1
+          exit false
       when config[:onboot]
         set_default_options
         launch_onboot
@@ -108,7 +108,7 @@ module ChefInit
         verify.run
       else
         err "You must pass in either the --onboot, --bootstrap, or --verify flag."
-        exit 1
+        exit false
       end
     end
 
@@ -118,12 +118,12 @@ module ChefInit
       elsif File.exist?("/etc/chef/client.rb") || (config.key?(:config_file) && config[:config_file].match(/^.*client\.rb$/))
         unless (File.exist?("/etc/chef/secure/validation.pem") || File.exist?("/etc/chef/secure/client.pem"))
           err "File /etc/chef/secure/validator.pem is missing. Please make sure your secure credentials are accessible to the running container."
-          exit 1
+          exit false
         end
         set_server_mode_defaults
       else
         err "Cannot find a valid configuration file in /etc/chef"
-        exit 1
+        exit false
       end
     end
 
@@ -162,7 +162,7 @@ module ChefInit
       # Catch TERM signal and foward to supervisor
       Signal.trap("TERM") do
         ChefInit::Log.info("Received SIGTERM - shutting down supervisor...\n\nGoodbye!")
-        Process.kill("TERM", @supervisor)
+        Process.kill("HUP", @supervisor)
       end
 
       # Catch HUP signal and forward to supervisor
@@ -174,7 +174,7 @@ module ChefInit
       # Wait for supervisor to quit
       ChefInit::Log.info("Waiting for Supervisor to exit...")
       Process.wait(@supervisor)
-      exit 0
+      exit true
     end
 
     ##
@@ -195,10 +195,17 @@ module ChefInit
 
       ChefInit::Log.info("Deleting client key...")
       delete_client_key
+      ChefInit::Log.debug("Removing node name file...")
       delete_node_name_file
 
-      Process.kill("TERM", @supervisor)
-      exit @chef_client.value.to_i
+      Process.kill("HUP", @supervisor)
+      Process.wait(@supervisor)
+      ChefInit::Log.debug("Supervisor killed...")
+
+      success = @chef_client.value.to_i == 0
+
+      ChefInit::Log.debug("Chef Client exit code: #{@chef_client.value.to_i}")
+      exit success
     end
 
     def launch_supervisor

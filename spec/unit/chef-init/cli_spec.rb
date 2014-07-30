@@ -61,7 +61,7 @@ describe ChefInit::CLI do
 
       it "should parse the input" do
         expect(cli).to receive(:parse_options).and_call_original
-        expect(cli).to receive(:exit).with(0)
+        expect(cli).to receive(:exit).with(true)
         cli.run
       end
     end
@@ -108,7 +108,7 @@ describe ChefInit::CLI do
     context "given no arguments or options" do
       let(:argv) { [] }
       it "alerts that you must pass in a flag or arguments" do
-        expect(cli).to receive(:exit).with(1)
+        expect(cli).to receive(:exit).with(false)
         cli.run
         expect(stderr).to eql("You must pass in either the --onboot, --bootstrap, or --verify flag.\n")
       end
@@ -119,7 +119,7 @@ describe ChefInit::CLI do
       let(:version_message) { "ChefInit Version: #{ChefInit::VERSION}\n" }
 
       it "should return the version number and then quit" do
-        expect(cli).to receive(:exit).with(0)
+        expect(cli).to receive(:exit).with(true)
         cli.run
         expect(stdout).to eql(version_message)
       end
@@ -128,7 +128,7 @@ describe ChefInit::CLI do
     context "both bootstrap and onboot flags are given" do
       let(:argv) { %w[ --onboot --bootstrap ]}
       it "gives an 'invalid option' message, the help output and exits with 1" do
-        expect(cli).to receive(:exit).with(1)
+        expect(cli).to receive(:exit).with(false)
         cli.run
         expect(stderr).to eql("You must pass in either the --onboot OR the --bootstrap flag, but not both.\n")
       end
@@ -169,7 +169,7 @@ describe ChefInit::CLI do
         end
 
         it "should error out and print a message" do
-          expect(cli).to receive(:exit).with(1)
+          expect(cli).to receive(:exit).with(false)
           cli.set_default_options
           expect(stderr).to eql("File /etc/chef/secure/validator.pem is missing. Please make sure your secure credentials are accessible to the running container.\n")
         end
@@ -183,7 +183,7 @@ describe ChefInit::CLI do
       end
 
       it "should exit with error" do
-        expect(cli).to receive(:exit).with(1)
+        expect(cli).to receive(:exit).with(false)
         cli.set_default_options
         expect(stderr).to eql("Cannot find a valid configuration file in /etc/chef\n")
       end
@@ -223,47 +223,47 @@ describe ChefInit::CLI do
 
     it "prints a welcome message" do
       expect(cli).to receive(:print_welcome)
-      expect(cli).to receive(:exit).with(0)
+      expect(cli).to receive(:exit).with(true)
       cli.launch_onboot
     end
 
     it "should launch process supervisor in non-blocking subprocess" do
       expect(cli).to receive(:launch_supervisor)
-      expect(cli).to receive(:exit).with(0)
+      expect(cli).to receive(:exit).with(true)
       cli.launch_onboot
     end
 
     it "should wait for the supervisor to start" do
       expect(cli).to receive(:wait_for_supervisor)
-      expect(cli).to receive(:exit).with(0)
+      expect(cli).to receive(:exit).with(true)
       cli.launch_onboot
     end
 
     it "should execute and wait for chef-client" do
       expect(cli).to receive(:run_chef_client)
-      expect(cli).to receive(:exit).with(0)
+      expect(cli).to receive(:exit).with(true)
       cli.launch_onboot
     end
 
     it "should delete validation key when chef-client is finished" do
       expect(cli).to receive(:delete_validation_key)
-      expect(cli).to receive(:exit).with(0)
+      expect(cli).to receive(:exit).with(true)
       cli.launch_onboot
     end
 
     it "should catch Kernel signals" do
-      expect(Signal).to receive(:trap).with("TERM")
       expect(Signal).to receive(:trap).with("HUP")
-      expect(cli).to receive(:exit).with(0)
+      expect(Signal).to receive(:trap).with("TERM")
+      expect(cli).to receive(:exit).with(true)
       cli.launch_onboot
     end
 
     it "should forward Kernel signals to supervisor process" do
-      expect(Process).to receive(:kill).with("TERM", anything)
+      expect(Process).to receive(:kill).with("HUP", anything)
       pid1 = fork do
         cli.launch_onboot
       end
-      Process.kill("TERM", pid1)
+      Process.kill("HUP", pid1)
 
       expect(Process).to receive(:kill).with("HUP", anything)
       pid2 = fork do
@@ -274,7 +274,7 @@ describe ChefInit::CLI do
 
     it "should wait for supervisor to exit" do
       expect(Process).to receive(:wait).with(supervisor_pid)
-      expect(cli).to receive(:exit).with(0)
+      expect(cli).to receive(:exit).with(true)
       cli.launch_onboot
     end
   end
@@ -291,47 +291,48 @@ describe ChefInit::CLI do
       cli.stub(:delete_client_key)
       cli.stub(:delete_node_name_file)
       Process.stub(:kill)
+      Process.stub(:wait)
     end
 
     it "prints a welcome message" do
       expect(cli).to receive(:print_welcome)
-      expect(cli).to receive(:exit).with(0)
+      expect(cli).to receive(:exit).with(true)
       cli.launch_bootstrap
     end
 
     it "should launch process supervisor in non-blocking subprocess" do
       expect(cli).to receive(:launch_supervisor)
-      expect(cli).to receive(:exit).with(0)
+      expect(cli).to receive(:exit).with(true)
       cli.launch_bootstrap
     end
 
     it "should wait for the supervisor to start" do
       expect(cli).to receive(:wait_for_supervisor)
-      expect(cli).to receive(:exit).with(0)
+      expect(cli).to receive(:exit).with(true)
       cli.launch_bootstrap
     end
 
     it "should execute and wait for chef-client" do
       expect(cli).to receive(:run_chef_client)
-      expect(cli).to receive(:exit).with(0)
+      expect(cli).to receive(:exit).with(true)
       cli.launch_bootstrap
     end
 
     it "should delete the client key after chef-client is finished" do
       expect(cli).to receive(:delete_client_key)
-      expect(cli).to receive(:exit).with(0)
+      expect(cli).to receive(:exit).with(true)
       cli.launch_bootstrap
     end
 
     it "should delete the node name file if it exists" do
       expect(cli).to receive(:delete_node_name_file)
-      expect(cli).to receive(:exit).with(0)
+      expect(cli).to receive(:exit).with(true)
       cli.launch_bootstrap
     end
 
     it "should kill the process supervisor when chef-client finishes" do
-      expect(Process).to receive(:kill).with("TERM", supervisor_pid)
-      expect(cli).to receive(:exit).with(0)
+      expect(Process).to receive(:kill).with("HUP", supervisor_pid)
+      expect(cli).to receive(:exit).with(true)
       cli.launch_bootstrap
     end
   end
@@ -437,11 +438,12 @@ describe ChefInit::CLI do
         cli.stub(:wait_for_supervisor)
         cli.stub(:run_chef_client).and_return(chefrun_process)
         cli.stub(:delete_client_key)
-        Process.stub(:kill).with("TERM", nil)
+        Process.stub(:kill).with("HUP", nil)
+        Process.stub(:wait)
       end
 
       it "should pass through the environment variable" do
-        expect(cli).to receive(:exit).with(0)
+        expect(cli).to receive(:exit).with(true)
         cli.run
         command = cli.chef_client_command
         expect(command).to eql("chef-client -c /etc/chef/client.rb -j /etc/chef/first-boot.json -l info -E prod")
@@ -459,11 +461,12 @@ describe ChefInit::CLI do
         cli.stub(:wait_for_supervisor)
         cli.stub(:run_chef_client).and_return(chefrun_process)
         cli.stub(:delete_client_key)
-        Process.stub(:kill).with("TERM", nil)
+        Process.stub(:kill).with("HUP", nil)
+        Process.stub(:wait)
       end
 
       it "should return server-mode command" do
-        expect(cli).to receive(:exit).with(0)
+        expect(cli).to receive(:exit).with(true)
         cli.run
         command = cli.chef_client_command
         expect(command).to eql("chef-client -c /etc/chef/client.rb -j /etc/chef/first-boot.json -l info")
