@@ -124,15 +124,25 @@ module ChefInit
       ChefInit::Log.info("-" * 20)
 
       # Does a failed chef run cause chef-init --bootstrap to exit with a non-zero?
-      bad_chef_run = ChefInit::Test.new("chef-client exit codes are honored")
+      chef_exit_codes = ChefInit::Test.new("chef-client exit codes are honored")
       ChefInit::Log.debug("Attempting to run command: #{omnibus_bin_dir}/chef-init --bootstrap -c #{tempdir}/zero.rb -j #{tempdir}/bad-first-boot.json")
-      output = system_command("#{omnibus_bin_dir}/chef-init --bootstrap -c #{tempdir}/zero.rb -j #{tempdir}/bad-first-boot.json --log_level debug")
-      ChefInit::Log.debug(output.stderr)
-      ChefInit::Log.debug(output.stdout)
-      unless output.exitstatus != 0
-        bad_chef_run.pass
+
+      failing_command = system_command("#{omnibus_bin_dir}/chef-init --bootstrap -c #{tempdir}/zero.rb -j #{tempdir}/bad-first-boot.json --log_level debug")
+      ChefInit::Log.debug(failing_command.stderr)
+      ChefInit::Log.debug(failing_command.stdout)
+      if output.exitstatus == 0
+        chef_exit_codes.fail "bootstrap: chef-init does not honor exit code from chef-client"
       else
-        bad_chef_run.fail "bootstrap: chef-init does not honor exit code from chef-client"
+        chef_exit_codes.pass
+      end
+
+      successful_command = system_command("#{omnibus_bin_dir}/chef-init --bootstrap -c #{tempdir}/zero.rb -j #{tempdir}/bad-first-boot.json --log_level debug")
+      ChefInit::Log.debug(failing_command.stderr)
+      ChefInit::Log.debug(failing_command.stdout)
+      if output.exitstatus == 0
+        chef_exit_codes.pass
+      else
+        chef_exit_codes.fail "bootstrap: chef-init does not honor exit code from chef-client"
       end
     end
 
@@ -161,7 +171,7 @@ module ChefInit
 
       # Do services start?
       enabled_services_started = ChefInit::Test.new("enabled services started")
-      output = system_command("ps aux | grep polip[o]")
+      output = system_command("ps aux | grep chef-init-tes[t]")
       ChefInit::Log.debug(output.stderr)
       ChefInit::Log.debug(output.stdout)
       unless output.stdout.empty?
@@ -176,7 +186,7 @@ module ChefInit
     #
     def setup_test_environment
       # Copy the fixture data into the tempdir
-      FileUtils.cp_r File.expand_path(File.dirname(__FILE__) + "../../../spec/data") + "/.", tempdir
+      FileUtils.cp_r File.expand_path(File.dirname(__FILE__) + "../../../data") + "/.", tempdir
     end
 
     def cleanup_bootstrap_environment
@@ -188,9 +198,6 @@ module ChefInit
       ChefInit::Log.debug(output.stdout)
       FileUtils.rm_rf('/opt/chef/sv')
       FileUtils.rm_rf('/opt/chef/service')
-      output = system_command("sudo apt-get -y remove --purge polipo")
-      ChefInit::Log.debug(output.stderr)
-      ChefInit::Log.debug(output.stdout)
     end
 
     def cleanup_onboot_environment
@@ -202,9 +209,6 @@ module ChefInit
       ChefInit::Log.debug(output.stdout)
       FileUtils.rm_rf('/opt/chef/sv')
       FileUtils.rm_rf('/opt/chef/service')
-      output = system_command("sudo apt-get -y remove --purge polipo")
-      ChefInit::Log.debug(output.stderr)
-      ChefInit::Log.debug(output.stdout)
     end
 
     def cleanup_test_environment
@@ -213,9 +217,6 @@ module ChefInit
       FileUtils.rm_rf(File.join(tempdir, 'first-boot.json'))
       FileUtils.rm_rf('/opt/chef/sv')
       FileUtils.rm_rf('/opt/chef/service')
-      output = system_command("sudo apt-get -y remove --purge polipo")
-      ChefInit::Log.debug(output.stderr)
-      ChefInit::Log.debug(output.stdout)
       clear_tempdir
     end
 

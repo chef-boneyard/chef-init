@@ -1,8 +1,8 @@
 {
   "run_list": ["recipe[foobar]"],
   "container_service": {
-    "polipo": {
-      "command": "/usr/bin/polipo"
+    "chef-init-test": {
+      "command": "/opt/chef/bin/chef-init-test"
     }
   }
 }
