@@ -1,0 +1,9 @@
+.bundle
+.git
+bin
+data
+lib
+spec
+tmp
+vendor
+coverage
