@@ -19,7 +19,6 @@ require 'chef-init/version'
 require 'chef-init/helpers'
 require 'chef-init/verify'
 require 'mixlib/cli'
-require 'open3'
 
 module ChefInit
   class CLI
@@ -95,8 +94,8 @@ module ChefInit
         msg "ChefInit Version: #{ChefInit::VERSION}"
         exit true
       when config[:onboot] && config[:bootstrap]
-          err "You must pass in either the --onboot OR the --bootstrap flag, but not both."
-          exit false
+        err "You must pass in either the --onboot OR the --bootstrap flag, but not both."
+        exit false
       when config[:onboot]
         set_default_options
         launch_onboot
@@ -113,11 +112,15 @@ module ChefInit
     end
 
     def set_default_options
-      if File.exist?("/etc/chef/zero.rb") || (config.key?(:config_file) && config[:config_file].match(/^.*zero\.rb$/)) || config[:local_mode]
+      if File.exist?("/etc/chef/zero.rb") || (config.key?(:config_file) &&
+          config[:config_file].match(/^.*zero\.rb$/)) || config[:local_mode]
         set_local_mode_defaults
-      elsif File.exist?("/etc/chef/client.rb") || (config.key?(:config_file) && config[:config_file].match(/^.*client\.rb$/))
-        unless (File.exist?("/etc/chef/secure/validation.pem") || File.exist?("/etc/chef/secure/client.pem"))
-          err "File /etc/chef/secure/validator.pem is missing. Please make sure your secure credentials are accessible to the running container."
+      elsif File.exist?("/etc/chef/client.rb") || (config.key?(:config_file) &&
+          config[:config_file].match(/^.*client\.rb$/))
+        unless (File.exist?("/etc/chef/secure/validation.pem") ||
+            File.exist?("/etc/chef/secure/client.pem"))
+          err "File /etc/chef/secure/validator.pem is missing. Please make " \
+            "sure your secure credentials are accessible to the running container."
           exit false
         end
         set_server_mode_defaults
@@ -143,37 +146,34 @@ module ChefInit
     # Launch onboot
     #
     def launch_onboot
-      print_welcome
+      # Catch SIGKILL
+      trap("KILL") do
+        ChefInit::Log.info("Received SIGKILL - shutting down supervisor")
+        shutdown_supervisor
+      end
+
+      # Catch SIGTERM
+      trap("TERM") do
+        ChefInit::Log.info("Received SIGTERM - shutting down supervisor")
+        shutdown_supervisor
+      end
 
       ChefInit::Log.info("Starting Supervisor...")
       @supervisor = launch_supervisor
       ChefInit::Log.info("Supervisor pid: #{@supervisor}")
 
-      ChefInit::Log.info("Waiting for Supervisor to start...")
+      ChefInit::Log.debug("Waiting for Supervisor to start...")
       wait_for_supervisor
 
       ChefInit::Log.info("Starting chef-client run...")
       @chef_client = run_chef_client
+      Process.wait @chef_client
 
-      ChefInit::Log.debug("Wait for chef-client to finish, then delete validation key")
-      Process.wait(@chef_client.pid)
+      ChefInit::Log.debug("Deleting validation key")
       delete_validation_key
 
-      # Catch TERM signal and foward to supervisor
-      Signal.trap("TERM") do
-        ChefInit::Log.info("Received SIGTERM - shutting down supervisor...\n\nGoodbye!")
-        Process.kill("HUP", @supervisor)
-      end
+      Process.wait @supervisor
 
-      # Catch HUP signal and forward to supervisor
-      Signal.trap("HUP") do
-        ChefInit::Log.info("Received SIGHUP - shutting down supervisor...\n\nGoodbye!")
-        Process.kill("HUP", @supervisor)
-      end
-
-      # Wait for supervisor to quit
-      ChefInit::Log.info("Waiting for Supervisor to exit...")
-      Process.wait(@supervisor)
       exit true
     end
 
@@ -181,72 +181,99 @@ module ChefInit
     # Launch bootstrap
     #
     def launch_bootstrap
-      print_welcome
-
       ChefInit::Log.info("Starting Supervisor...")
       @supervisor = launch_supervisor
       ChefInit::Log.info("Supervisor pid: #{@supervisor}")
 
-      ChefInit::Log.info("Waiting for Supervisor to start...")
+      ChefInit::Log.debug("Waiting for Supervisor to start...")
       wait_for_supervisor
 
       ChefInit::Log.info("Starting chef-client run...")
       @chef_client = run_chef_client
+      Process.wait @chef_client
+      chef_client_exitstatus = $?.exitstatus == 0
 
       ChefInit::Log.info("Deleting client key...")
       delete_client_key
       ChefInit::Log.debug("Removing node name file...")
       delete_node_name_file
 
-      Process.kill("HUP", @supervisor)
-      Process.wait(@supervisor)
-      ChefInit::Log.debug("Supervisor killed...")
+      shutdown_supervisor
 
-      success = @chef_client.value.to_i == 0
-
-      ChefInit::Log.debug("Chef Client exit code: #{@chef_client.value.to_i}")
-      exit success
+      exit chef_client_exitstatus
     end
 
+    #
+    # Launch the supervisor
+    #
     def launch_supervisor
-      Process.spawn({"PATH" => path}, supervisor_launch_command)
-    end
-
-    def wait_for_supervisor
-      sleep 1
-    end
-
-    def supervisor_launch_command
-      "#{omnibus_embedded_bin_dir}/runsvdir -P #{omnibus_root}/service 'log: #{ '.' * 395}'"
-    end
-
-    ##
-    # Run the chef-client
-    # Returns a wait_thr object that has the exit status and pid
-    def run_chef_client
-      Open3.popen2e({"PATH" => path}, chef_client_command) do |stdin, stdout_err, wait_thr|
-        while line = stdout_err.gets
-          puts line
-        end
-        wait_thr
+      fork do
+        exec(
+          {"PATH" => path},
+          "#{omnibus_embedded_bin_dir}/runsvdir",
+          "-P",
+          "#{omnibus_root}/service",
+          "'log: #{ '.' * 395}'"
+        )
       end
     end
 
+    #
+    # Run the chef-client
+    #
+    def run_chef_client
+      fork do
+        exec({"PATH" => path}, chef_client_command)
+      end
+    end
+
+    def shutdown_supervisor
+      ChefInit::Log.debug("Waiting for services to stop...")
+
+      ChefInit::Log.debug("Exit all the services")
+      system_command("#{omnibus_embedded_bin_dir}/sv stop #{omnibus_root}/service/*")
+      system_command("#{omnibus_embedded_bin_dir}/sv exit #{omnibus_root}/service/*")
+
+      ChefInit::Log.debug("Kill the primary supervisor")
+      Process.kill("HUP", @supervisor)
+      sleep 3
+      Process.kill("TERM", @supervisor)
+      sleep 3
+      Process.kill("KILL", @supervisor)
+
+      ChefInit::Log.debug("Kill the runsv processes")
+      get_all_services.each do |die_daemon_die|
+        system_command("pkill -KILL -f 'runsv #{die_daemon_die}'")
+      end
+
+      ChefInit::Log.debug("Shutdown complete...")
+    end
+
     def chef_client_command
-      command = []
-      command << "chef-client -c #{config[:config_file]} -j #{config[:json_attribs]}"
+      command = ["chef-client"]
+      command << "-c #{config[:config_file]}"
+      command << "-j #{config[:json_attribs]}"
+      command << "-l #{config[:log_level]}"
 
       if config[:local_mode]
         command << "-z"
       end
-
-      command << "-l #{config[:log_level]}"
 
       unless config[:environment].nil?
         command << "-E #{config[:environment]}"
       end
 
       command.join(" ")
+    end
+
+    private
+
+    def wait_for_supervisor
+      sleep 5
+    end
+
+    def supervisor_launch_command
+      "#{omnibus_embedded_bin_dir}/runsvdir -P #{omnibus_root}/service 'log: #{ '.' * 395}'"
     end
 
     def delete_client_key
@@ -261,17 +288,12 @@ module ChefInit
       File.delete("/etc/chef/secure/validation.pem") if File.exist?("/etc/chef/secure/validation.pem")
     end
 
-    ##
-    # Logging
-    #
-    def print_welcome
-      puts <<-eos
+    def get_all_services_files
+      Dir[File.join("#{omnibus_root}/service", '*')]
+    end
 
-#################################
-# Welcome to Chef Container
-#################################
-
-      eos
+    def get_all_services
+      get_all_services_files.map { |f| File.basename(f) }.sort
     end
   end
 end

@@ -48,6 +48,14 @@ describe ChefInit::Test do
         expect(ChefInit::Test.did_pass?).to eql(false)
       end
     end
+
+    context "when all test cases fail" do
+      it "should return false" do
+        test_case.fail "error"
+        test_case2.fail "error"
+        expect(ChefInit::Test.did_pass?).to eql(false)
+      end
+    end
   end
 
   describe "#fail" do
@@ -67,71 +75,6 @@ describe ChefInit::Test do
       test_case.fail "error msg"
       test_case2.fail "error msg too"
       expect(ChefInit::Test.failed_tests).to eql(["error msg", "error msg too"])
-    end
-  end
-end
-
-describe ChefInit::Verify do
-  let(:verify) { ChefInit::Verify.new }
-  let(:mixlib) { ShellOut::Mixlib.new }
-
-  before(:each) { ChefInit::Test.class_variable_set :@@failed_tests, [] }
-
-  context "when binaries all exist" do
-    it "should pass all tests" do
-      File.stub(:exists?).with("/opt/chef/embedded/bin/runsvdir").and_return(true)
-      File.stub(:exists?).with("/opt/chef/embedded/bin/sv").and_return(true)
-      File.stub(:exists?).with("/opt/chef/bin/chef-init").and_return(true)
-      File.stub(:exists?).with("/usr/bin/chef-init").and_return(true)
-      File.stub(:exists?).with("/opt/chef/bin/chef-client").and_return(true)
-      File.stub(:exists?).with("/usr/bin/chef-client").and_return(true)
-
-      verify.binaries_exist?
-      expect(ChefInit::Test.did_pass?).to eql(true)
-    end
-  end
-
-  context "when at least one binary is missing" do
-    it "should fail the test and log the failure" do
-      File.stub(:exists?).with("/opt/chef/embedded/bin/runsvdir").and_return(true)
-      File.stub(:exists?).with("/opt/chef/embedded/bin/sv").and_return(true)
-      File.stub(:exists?).with("/opt/chef/bin/chef-init").and_return(false)
-      File.stub(:exists?).with("/usr/bin/chef-init").and_return(true)
-      File.stub(:exists?).with("/opt/chef/bin/chef-client").and_return(true)
-      File.stub(:exists?).with("/usr/bin/chef-client").and_return(true)
-
-      verify.binaries_exist?
-      expect(ChefInit::Test.did_pass?).to eql(false)
-      expect(ChefInit::Test.failed_tests).to eql(["/opt/chef/bin/chef-init does not exist"])
-    end
-  end
-
-  context "when the binaries all run correctly" do
-    let(:shellout) { double( "Mixlib::ShellOut", :exitstatus => 0)}
-
-    it "should pass all tests" do
-      verify.stub(:system_command).with("/opt/chef/bin/chef-init --version").and_return(shellout)
-      verify.stub(:system_command).with("/usr/bin/chef-init --version").and_return(shellout)
-      verify.stub(:system_command).with("/opt/chef/bin/chef-client --version").and_return(shellout)
-      verify.stub(:system_command).with("/usr/bin/chef-client --version").and_return(shellout)
-
-      verify.binaries_run?
-      expect(ChefInit::Test.did_pass?).to eql(true)
-    end
-  end
-
-  context "when the binaries all run correctly" do
-    let(:shellout) { double( "Mixlib::ShellOut", :exitstatus => 1)}
-
-    it "should pass all tests" do
-      verify.stub(:system_command).with("/opt/chef/bin/chef-init --version").and_return(shellout)
-      verify.stub(:system_command).with("/usr/bin/chef-init --version").and_return(shellout)
-      verify.stub(:system_command).with("/opt/chef/bin/chef-client --version").and_return(shellout)
-      verify.stub(:system_command).with("/usr/bin/chef-client --version").and_return(shellout)
-
-      verify.binaries_run?
-      expect(ChefInit::Test.did_pass?).to eql(false)
-      expect(ChefInit::Test.failed_tests).to include("`/opt/chef/bin/chef-client --version` does not exit with 0")
     end
   end
 end

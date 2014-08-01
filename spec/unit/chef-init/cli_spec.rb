@@ -56,88 +56,90 @@ describe ChefInit::CLI do
       cli.stub(:launch_bootstrap)
     end
 
-    context "when the application starts" do
+    describe "when the application starts" do
       let(:argv) { %w[ --version ] }
 
-      it "should parse the input" do
+      it "parses the input" do
         expect(cli).to receive(:parse_options).and_call_original
         expect(cli).to receive(:exit).with(true)
         cli.run
       end
     end
 
-    context "when onboot flag is passed" do
+    describe "when onboot flag is passed" do
       let(:argv) { %w[ --onboot ] }
 
-      it "should set default options" do
+      it "sets default options" do
         expect(cli).to receive(:set_default_options)
         cli.run
       end
 
-      it "should launch onboot steps" do
+      it "launches onboot steps" do
         expect(cli).to receive(:launch_onboot)
         cli.run
       end
     end
 
-    context "when bootstrap flag is passed" do
+    describe "when bootstrap flag is passed" do
       let(:argv) { %w[ --bootstrap ] }
 
-      it "should set default options" do
+      it "sets default options" do
         expect(cli).to receive(:set_default_options)
         cli.run
       end
 
-      it "should launch build steps" do
+      it "launches build steps" do
         expect(cli).to receive(:launch_bootstrap)
         cli.run
       end
     end
 
-    context "when --verify flag is passed" do
+    describe "when verify flag is passed" do
       let(:argv) { %w[ --verify ] }
       let(:verify) { double("ChefInit::Verify", run: nil) }
 
-      it "should run a verification process" do
+      it "runs the verification process" do
         ChefInit::Verify.stub(:new).and_return(verify)
         expect(verify).to receive(:run)
         cli.run
       end
     end
 
-    context "given no arguments or options" do
+    describe "when given no arguments or options" do
       let(:argv) { [] }
       it "alerts that you must pass in a flag or arguments" do
         expect(cli).to receive(:exit).with(false)
         cli.run
-        expect(stderr).to eql("You must pass in either the --onboot, --bootstrap, or --verify flag.\n")
+        expect(stderr).to eql("You must pass in either the --onboot, " \
+          "--bootstrap, or --verify flag.\n")
       end
     end
 
-    context "version is requested" do
+    describe "when version flas is passes" do
       let(:argv) { %w[ -v ] }
       let(:version_message) { "ChefInit Version: #{ChefInit::VERSION}\n" }
 
-      it "should return the version number and then quit" do
+      it "returns the version number and then exits" do
         expect(cli).to receive(:exit).with(true)
         cli.run
         expect(stdout).to eql(version_message)
       end
     end
 
-    context "both bootstrap and onboot flags are given" do
+    describe "when both bootstrap and onboot flags are given" do
       let(:argv) { %w[ --onboot --bootstrap ]}
-      it "gives an 'invalid option' message, the help output and exits with 1" do
+      it "gives an 'invalid option' message, the help output and exits" do
         expect(cli).to receive(:exit).with(false)
         cli.run
-        expect(stderr).to eql("You must pass in either the --onboot OR the --bootstrap flag, but not both.\n")
+        expect(stderr).to eql("You must pass in either the --onboot OR the " \
+          "--bootstrap flag, but not both.\n")
       end
     end
 
   end
 
   describe "#set_default_options" do
-    context "zero.rb exists" do
+    context "when zero.rb exists" do
       before do
         File.stub(:exist?).with("/etc/chef/zero.rb").and_return(true)
         File.stub(:exist?).with("/etc/chef/client.rb").and_return(false)
@@ -149,7 +151,7 @@ describe ChefInit::CLI do
       end
     end
 
-    context "client.rb exists" do
+    context "when client.rb exists" do
       before do
         File.stub(:exist?).with("/etc/chef/zero.rb").and_return(false)
         File.stub(:exist?).with("/etc/chef/client.rb").and_return(true)
@@ -160,7 +162,7 @@ describe ChefInit::CLI do
         cli.set_default_options
       end
 
-      context "server-mode but validator and client keys are missing" do
+      context "with missing validator and client keys" do
         before do
           File.stub(:exist?).with("/etc/chef/client.rb").and_return(true)
           File.stub(:exist?).with("/etc/chef/zero.rb").and_return(false)
@@ -168,21 +170,23 @@ describe ChefInit::CLI do
           File.stub(:exist?).with("/etc/chef/secure/client.pem").and_return(false)
         end
 
-        it "should error out and print a message" do
+        it "errors out and prints a message" do
           expect(cli).to receive(:exit).with(false)
           cli.set_default_options
-          expect(stderr).to eql("File /etc/chef/secure/validator.pem is missing. Please make sure your secure credentials are accessible to the running container.\n")
+          expect(stderr).to eql("File /etc/chef/secure/validator.pem is missing." \
+            " Please make sure your secure credentials are accessible" \
+            " to the running container.\n")
         end
       end
     end
 
-    context "valid configuration file does not exist" do
+    context "when valid configuration file does not exist" do
       before do
         File.stub(:exist?).with("/etc/chef/client.rb").and_return(false)
         File.stub(:exist?).with("/etc/chef/zero.rb").and_return(false)
       end
 
-      it "should exit with error" do
+      it "exits with error" do
         expect(cli).to receive(:exit).with(false)
         cli.set_default_options
         expect(stderr).to eql("Cannot find a valid configuration file in /etc/chef\n")
@@ -191,88 +195,88 @@ describe ChefInit::CLI do
   end
 
   describe "#set_local_mode_defaults" do
-    it "should set defaults typical for local-mode runs" do
-      cli.set_local_mode_defaults
+    before { cli.set_local_mode_defaults }
+
+    it 'sets local mode to true' do
       expect(cli.config[:local_mode]).to eql(true)
+    end
+
+    it 'uses zero.rb for the config file' do
       expect(cli.config[:config_file]).to eql("/etc/chef/zero.rb")
+    end
+
+    it 'uses first-boot.json for json attributes' do
       expect(cli.config[:json_attribs]).to eql("/etc/chef/first-boot.json")
     end
   end
 
   describe "#set_server_mode_defaults" do
-    it "should set defaults typical for client-mode runs" do
-      cli.set_server_mode_defaults
+    before { cli.set_server_mode_defaults }
+
+    it 'sets local mode to false' do
       expect(cli.config[:local_mode]).to eql(false)
+    end
+
+    it 'uses client.rb for the config file' do
       expect(cli.config[:config_file]).to eql("/etc/chef/client.rb")
+    end
+
+    it 'uses first-boot.json for json attributes' do
       expect(cli.config[:json_attribs]).to eql("/etc/chef/first-boot.json")
     end
   end
 
   describe "#launch_onboot" do
     let(:supervisor_pid) { 1000 }
-    let(:chefrun_process) { double("process object", value: "0", pid: 1001)}
+    let(:chefrun_pid) { 1001 }
 
     before do
-      cli.stub(:print_welcome)
       cli.stub(:launch_supervisor).and_return(supervisor_pid)
       cli.stub(:wait_for_supervisor)
-      cli.stub(:run_chef_client).and_return(chefrun_process)
+      cli.stub(:run_chef_client).and_return(chefrun_pid)
       cli.stub(:delete_validation_key)
-      Process.stub(:wait)
+      Process.stub(:wait).with(supervisor_pid)
+      Process.stub(:wait).with(chefrun_pid)
     end
 
-    it "prints a welcome message" do
-      expect(cli).to receive(:print_welcome)
-      expect(cli).to receive(:exit).with(true)
-      cli.launch_onboot
-    end
-
-    it "should launch process supervisor in non-blocking subprocess" do
+    it "launches process supervisor" do
       expect(cli).to receive(:launch_supervisor)
       expect(cli).to receive(:exit).with(true)
       cli.launch_onboot
     end
 
-    it "should wait for the supervisor to start" do
-      expect(cli).to receive(:wait_for_supervisor)
+    it "waits for the supervisor to start" do
+      expect(cli).to receive(:wait_for_supervisor).and_return(supervisor_pid)
       expect(cli).to receive(:exit).with(true)
       cli.launch_onboot
     end
 
-    it "should execute and wait for chef-client" do
-      expect(cli).to receive(:run_chef_client)
+    it "executes chef-client" do
+      expect(cli).to receive(:run_chef_client).and_return(chefrun_pid)
       expect(cli).to receive(:exit).with(true)
       cli.launch_onboot
     end
 
-    it "should delete validation key when chef-client is finished" do
+    it 'waits for chef-client to finish' do
+      expect(Process).to receive(:wait).with(chefrun_pid)
+      expect(cli).to receive(:exit).with(true)
+      cli.launch_onboot
+    end
+
+    it "deletes validation key when chef-client is finished" do
       expect(cli).to receive(:delete_validation_key)
       expect(cli).to receive(:exit).with(true)
       cli.launch_onboot
     end
 
-    it "should catch Kernel signals" do
-      expect(Signal).to receive(:trap).with("HUP")
-      expect(Signal).to receive(:trap).with("TERM")
+    it "catches SIGTERM and SIGKILL to shutdown supervisor" do
+      expect(cli).to receive(:trap).with("TERM")
+      expect(cli).to receive(:trap).with("KILL")
       expect(cli).to receive(:exit).with(true)
       cli.launch_onboot
     end
 
-    it "should forward Kernel signals to supervisor process" do
-      expect(Process).to receive(:kill).with("HUP", anything)
-      pid1 = fork do
-        cli.launch_onboot
-      end
-      Process.kill("HUP", pid1)
-
-      expect(Process).to receive(:kill).with("HUP", anything)
-      pid2 = fork do
-        cli.launch_onboot
-      end
-      Process.kill("HUP", pid2)
-    end
-
-    it "should wait for supervisor to exit" do
+    it "waits for supervisor to exit" do
       expect(Process).to receive(:wait).with(supervisor_pid)
       expect(cli).to receive(:exit).with(true)
       cli.launch_onboot
@@ -281,196 +285,125 @@ describe ChefInit::CLI do
 
   describe "#launch_bootstrap" do
     let(:supervisor_pid) { 1000 }
-    let(:chefrun_process) { double("process object", value: "0", pid: 1001)}
+    let(:chefrun_pid) { 1001 }
 
     before do
-      cli.stub(:print_welcome)
       cli.stub(:launch_supervisor).and_return(supervisor_pid)
       cli.stub(:wait_for_supervisor)
-      cli.stub(:run_chef_client).and_return(chefrun_process)
+      cli.stub(:run_chef_client).and_return(chefrun_pid)
       cli.stub(:delete_client_key)
       cli.stub(:delete_node_name_file)
-      Process.stub(:kill)
-      Process.stub(:wait)
+      cli.stub(:shutdown_supervisor)
+      Process.stub(:wait).with(supervisor_pid)
+      Process.stub(:wait).with(chefrun_pid)
+      cli.stub(:kill)
     end
 
-    it "prints a welcome message" do
-      expect(cli).to receive(:print_welcome)
+    it "launches the process supervisor" do
+      expect(cli).to receive(:launch_supervisor).and_return(supervisor_pid)
       expect(cli).to receive(:exit).with(true)
       cli.launch_bootstrap
     end
 
-    it "should launch process supervisor in non-blocking subprocess" do
-      expect(cli).to receive(:launch_supervisor)
-      expect(cli).to receive(:exit).with(true)
-      cli.launch_bootstrap
-    end
-
-    it "should wait for the supervisor to start" do
+    it "waits for the supervisor to start" do
       expect(cli).to receive(:wait_for_supervisor)
       expect(cli).to receive(:exit).with(true)
       cli.launch_bootstrap
     end
 
-    it "should execute and wait for chef-client" do
-      expect(cli).to receive(:run_chef_client)
+    it "executes and wait for chef-client" do
+      expect(cli).to receive(:run_chef_client).and_return(chefrun_pid)
       expect(cli).to receive(:exit).with(true)
       cli.launch_bootstrap
     end
 
-    it "should delete the client key after chef-client is finished" do
+    it "deletes the client key after chef-client is finished" do
       expect(cli).to receive(:delete_client_key)
       expect(cli).to receive(:exit).with(true)
       cli.launch_bootstrap
     end
 
-    it "should delete the node name file if it exists" do
+    it "deletes the node name file if it exists" do
       expect(cli).to receive(:delete_node_name_file)
       expect(cli).to receive(:exit).with(true)
       cli.launch_bootstrap
     end
 
-    it "should kill the process supervisor when chef-client finishes" do
-      expect(Process).to receive(:kill).with("HUP", supervisor_pid)
+    it "shuts down the supervisor" do
+      expect(cli).to receive(:shutdown_supervisor)
       expect(cli).to receive(:exit).with(true)
       cli.launch_bootstrap
     end
   end
 
   describe "#launch_supervisor" do
-    let(:cmd) { "/opt/chef/embedded/bin/runsvdir -P /opt/chef/service 'log: #{ '.' * 395 }'" }
-    let(:env) { {"PATH" => cli.path } }
-
-    before do
-      Process.stub(:spawn).with(env, cmd)
-    end
-
-    it "should launch supervisor as a non-block subprocess" do
-      expect(Process).to receive(:spawn).with(env, cmd)
+    it "should launch supervisor as a non-blocking subprocess" do
+      expect(cli).to receive(:fork) do |&block|
+        expect(cli).to receive(:exec).with(
+          {"PATH" => cli.path},
+          "/opt/chef/embedded/bin/runsvdir",
+          "-P",
+          "/opt/chef/service",
+          "'log: #{ '.' * 395}'"
+        )
+        block.call
+      end
       cli.launch_supervisor
     end
   end
 
-  describe "#wait_for_supervisor" do
-    before do
-      cli.stub(:sleep)
-    end
-
-    it "should sleep for 1 second" do
-      expect(cli).to receive(:sleep).with(1)
-      cli.wait_for_supervisor
-    end
-  end
-
   describe "#run_chef_client" do
-    let(:env) { {"PATH" => cli.path } }
+    before { cli.stub(:chef_client_command).and_return("chef-client") }
 
-    before do
-      Open3.stub(:popen2e)
-    end
-
-    context "when local-mode flag was passed in" do
-      it "should execute chef-client in local-mode" do
-        cli.stub(:chef_client_command) { "chef-client -c /etc/chef/zero.rb -j /etc/chef/first-boot.json -z" }
-        expect(Open3).to receive(:popen2e).with(env, "chef-client -c /etc/chef/zero.rb -j /etc/chef/first-boot.json -z")
-        cli.run_chef_client
+    it "executes chef-client as a non-blocking sub-process" do
+      expect(cli).to receive(:fork) do |&block|
+        expect(cli).to receive(:exec).with(
+          {"PATH" => cli.path},
+          "chef-client"
+        )
+        block.call
       end
-    end
-
-    it "should execute chef-client" do
-      cli.stub(:chef_client_command) { "chef-client -c /etc/chef/client.rb -j /etc/chef/first-boot.json" }
-      expect(Open3).to receive(:popen2e).with(env, "chef-client -c /etc/chef/client.rb -j /etc/chef/first-boot.json")
       cli.run_chef_client
-    end
-
-    it "should forward stdout from subprocess to main stdout" do
-
-    end
-  end
-
-  describe "#delete_validation_key" do
-    before do
-      File.stub(:exist?).with("/etc/chef/secure/validation.pem").and_return(true)
-      File.stub(:delete)
-    end
-
-    it "should remove validation key file" do
-      expect(File).to receive(:delete).with("/etc/chef/secure/validation.pem")
-      cli.delete_validation_key
-    end
-  end
-
-  describe "#delete_client_key" do
-    before do
-      File.stub(:exist?).with("/etc/chef/secure/client.pem").and_return(true)
-      File.stub(:delete)
-    end
-
-    it "should remove client key file" do
-      expect(File).to receive(:delete).with("/etc/chef/secure/client.pem")
-      cli.delete_client_key
     end
   end
 
   describe "#chef_client_command" do
-    context "chef local-mode" do
-      let(:argv) { ["--bootstrap", "-z"]}
+
+    describe "with local-mode defaults" do
       before do
-        File.stub(:exist?).with("/etc/chef/zero.rb").and_return(true)
-        File.stub(:exist?).with("/etc/chef/client.rb").and_return(false)
+        cli.config[:local_mode] = true
+        cli.config[:config_file] = "/etc/chef/zero.rb"
+        cli.config[:json_attribs] = "/etc/chef/first-boot.json"
+        cli.config[:log_level] = :info
       end
 
-      it "should return local-mode command" do
-        cli.set_default_options
-        command = cli.chef_client_command
-        expect(command).to eql("chef-client -c /etc/chef/zero.rb -j /etc/chef/first-boot.json -z -l info")
-      end
+      it { expect(cli.send(:chef_client_command)).to eql("chef-client -c " \
+        "/etc/chef/zero.rb -j /etc/chef/first-boot.json -l info -z") }
     end
 
-    context "environment is passed in" do
-      let(:argv) { ["--bootstrap", "-E", "prod"] }
-      let(:chefrun_process) { double("process object", value: "0", pid: 1001)}
-
+    describe "with server-mode defaults" do
       before do
-        File.stub(:exist?).with("/etc/chef/zero.rb").and_return(false)
-        File.stub(:exist?).with("/etc/chef/client.rb").and_return(true)
-        cli.stub(:launch_supervisor)
-        cli.stub(:wait_for_supervisor)
-        cli.stub(:run_chef_client).and_return(chefrun_process)
-        cli.stub(:delete_client_key)
-        Process.stub(:kill).with("HUP", nil)
-        Process.stub(:wait)
+        cli.config[:local_mode] = false
+        cli.config[:config_file] = "/etc/chef/client.rb"
+        cli.config[:json_attribs] = "/etc/chef/first-boot.json"
+        cli.config[:log_level] = :info
       end
 
-      it "should pass through the environment variable" do
-        expect(cli).to receive(:exit).with(true)
-        cli.run
-        command = cli.chef_client_command
-        expect(command).to eql("chef-client -c /etc/chef/client.rb -j /etc/chef/first-boot.json -l info -E prod")
-      end
+      it { expect(cli.send(:chef_client_command)).to eql("chef-client -c " \
+        "/etc/chef/client.rb -j /etc/chef/first-boot.json -l info") }
     end
 
-    context "chef server-mode" do
-      let(:argv) { ["--bootstrap"] }
-      let(:chefrun_process) { double("process object", value: "0", pid: 1001)}
-
+    describe "with environment specified" do
       before do
-        File.stub(:exist?).with("/etc/chef/zero.rb").and_return(false)
-        File.stub(:exist?).with("/etc/chef/client.rb").and_return(true)
-        cli.stub(:launch_supervisor)
-        cli.stub(:wait_for_supervisor)
-        cli.stub(:run_chef_client).and_return(chefrun_process)
-        cli.stub(:delete_client_key)
-        Process.stub(:kill).with("HUP", nil)
-        Process.stub(:wait)
+        cli.config[:local_mode] = true
+        cli.config[:config_file] = "/etc/chef/zero.rb"
+        cli.config[:json_attribs] = "/etc/chef/first-boot.json"
+        cli.config[:log_level] = :info
+        cli.config[:environment] = "prod"
       end
 
-      it "should return server-mode command" do
-        expect(cli).to receive(:exit).with(true)
-        cli.run
-        command = cli.chef_client_command
-        expect(command).to eql("chef-client -c /etc/chef/client.rb -j /etc/chef/first-boot.json -l info")
-      end
+      it { expect(cli.send(:chef_client_command)).to eql("chef-client -c " \
+        "/etc/chef/zero.rb -j /etc/chef/first-boot.json -l info -z -E prod")}
     end
   end
 end
