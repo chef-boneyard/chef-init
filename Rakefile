@@ -21,7 +21,8 @@ end
 
 desc 'verify the dev docker image'
 task :verify do
-  system 'docker run chef-init-dev chef-init --verify --log_level debug'
+  pid = `docker run -d chef-init-dev chef-init --verify --log_level debug`
+  system "docker logs -f #{pid}"
 end
 
 desc 'build and verify chef-init'
