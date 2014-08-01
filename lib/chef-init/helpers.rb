@@ -51,7 +51,7 @@ module ChefInit
     def exit(n)
       Kernel.exit(n)
     end
-    
+
     #
     # Locates the omnibus directories
     #
@@ -68,13 +68,12 @@ module ChefInit
       "/opt/chef/embedded/bin"
     end
 
-    private
-
-    def omnibus_expand_path(*paths)
-      dir = File.expand_path(File.join(*paths))
-      raise OmnibusInstallNotFound.new() unless ( dir and File.directory?(dir) )
-      dir
+    def data_path
+      File.expand_path(File.dirname(__FILE__) + "../../../data")
     end
 
+    def path
+      "#{omnibus_root}/bin:#{omnibus_root}/embedded/bin:/usr/local/bin:/usr/local/sbin:/bin:/sbin:/usr/bin:/usr/sbin"
+    end
   end
 end

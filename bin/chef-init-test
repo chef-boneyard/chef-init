@@ -1,5 +1,6 @@
+#!/usr/bin/env ruby
 #
-# Copyright:: Copyright (c) 2012-2014 Chef Software, Inc.
+# Copyright:: Copyright (c) 2014 Chef Software Inc.
 # License:: Apache License, Version 2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,6 +16,14 @@
 # limitations under the License.
 #
 
-module ChefInit
-  VERSION = "0.3.0"
+require 'timeout'
+
+# Set a trap for ctrl-C right away so we don't surface interrupt exceptions inside of rubygems or whatever.
+Kernel.trap(:INT) { print("\n"); exit 1 }
+
+# Set process name to filename (shows up in ps, top)
+$0 = File.basename(__FILE__)
+
+loop do
+  sleep 1
 end

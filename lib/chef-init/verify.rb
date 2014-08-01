@@ -21,13 +21,16 @@ require 'fileutils'
 require 'tmpdir'
 
 module ChefInit
+  # A class to handle/store test case data
   class Test
+    @@test_count = 0
     @@failed_tests = []
 
     include ChefInit::Helpers
 
     def initialize(name)
       @name = name
+      @@test_count += 1
     end
 
     def fail(msg)
@@ -37,6 +40,10 @@ module ChefInit
 
     def pass
       ChefInit::Log.info("#{@name}: pass")
+    end
+
+    def self.num_tests_passed
+      "#{@@test_count - @@failed_tests.length}/#{@@test_count}"
     end
 
     def self.did_pass?
@@ -52,26 +59,29 @@ module ChefInit
 
     include ChefInit::Helpers
 
+    #
+    # Run the verification tests
+    #
     def run
       binaries_exist?
       binaries_run?
-      setup_test_environment
       run_bootstrap_tests
       run_onboot_tests
-      cleanup_test_environment
 
       if ChefInit::Test.did_pass?
-        ChefInit::Log.info("All tests passed.")
+        ChefInit::Log.info("#{ChefInit::Test.num_tests_passed} tests passed.")
       else
-        failed_test_string = ChefInit::Test.failed_tests.each { |t| "\t{t}" }.join("\n")
+        failed_test_string = ChefInit::Test.failed_tests.each { |t|
+          "\t #{t}" }.join("\n")
 
         ChefInit::Log.fatal("Tests failed:\n#{failed_test_string}")
         exit 1
       end
     end
 
-
+    #
     # Check to make sure the necessary binaries exist
+    #
     def binaries_exist?
       files = [
         File.join(omnibus_embedded_bin_dir, 'runsvdir'),
@@ -83,7 +93,7 @@ module ChefInit
       ]
 
       files.each do |file|
-        file_exists = ChefInit::Test.new("checking for #{file}")
+        file_exists = ChefInit::Test.new("file '#{file}' exists")
         if File.exists?(file)
           file_exists.pass
         else
@@ -92,7 +102,9 @@ module ChefInit
       end
     end
 
+    #
     # Check to make sure the necessary commands run successfully (libraries load)
+    #
     def binaries_run?
       commands = [
         "#{omnibus_bin_dir}/chef-init --version",
@@ -113,30 +125,35 @@ module ChefInit
 
     end
 
-    ##
-    # --bootstrap tests
+    #
+    # bootstrap tests
     #
     def run_bootstrap_tests
-      ChefInit::Log.info("-" * 20)
-      ChefInit::Log.info("Running tests for `chef-init --bootstrap`")
-      ChefInit::Log.info("-" * 20)
-      ChefInit::Log.debug("Attempting to run command: #{omnibus_bin_dir}/chef-init --bootstrap -c #{tempdir}/zero.rb -j #{tempdir}/first-boot.json")
-      system_command("#{omnibus_bin_dir}/chef-init --bootstrap -c #{tempdir}/zero.rb -j #{tempdir}/first-boot.json")
+      # Does a failed chef run cause chef-init --bootstrap to exit with a non-zero?
+      failing_bootstrap_run
+
+      # Does a passing chef run cause chef-init --bootstrap to exit with a zero?
+      passing_bootstrap_run
     end
 
-    ##
-    # --onboot tests
+    #
+    # onboot tests
+    #   It should launch the chef-init --onboot process and then run the tests
+    #   while it is still running. After the tests have run, it should quit
+    #   chef-init --onboot.
     #
     def run_onboot_tests
-      ChefInit::Log.info("-" * 20)
-      ChefInit::Log.info("Running tests for `chef-init --onboot`")
-      ChefInit::Log.info("-" * 20)
-      ChefInit::Log.debug("Attempting to run command: #{omnibus_bin_dir}/chef-init --onboot -c #{tempdir}/zero.rb -j #{tempdir}/first-boot.json")
-      output = system_command("#{omnibus_bin_dir}/chef-init --onboot -c #{tempdir}/zero.rb -j #{tempdir}/first-boot.json --log_level debug")
-      ChefInit::Log.debug(output.stderr)
-      ChefInit::Log.debug(output.stdout)
+      setup_test_environment
 
-      # give it a few seconds to setup
+      chef_init_cmd = "#{omnibus_bin_dir}/chef-init" \
+        " --onboot" \
+        " --log_level #{ChefInit::Log.level}" \
+        " --config #{tempdir}/zero.rb" \
+        " --json-attributes #{tempdir}/good-first-boot.json"
+
+      Process.spawn(chef_init_cmd, out:"#{tempdir}/chef-init-log")
+
+      # Wait a bit for chef-client to run
       sleep 10
 
       # Does it start the runit process?
@@ -146,60 +163,139 @@ module ChefInit
         runsvdir_started.pass
       else
         runsvdir_started.fail "onboot: runsvdir did not start"
+        puts output.stdout
       end
 
       # Do services start?
       enabled_services_started = ChefInit::Test.new("enabled services started")
-      output = system_command("ps aux | grep polip[o]")
+      output = system_command("ps aux | grep chef-init-tes[t]")
       unless output.stdout.empty?
         enabled_services_started.pass
       else
         enabled_services_started.fail "onboot: services did not start"
+        puts output.stdout
+      end
+
+      # Cleanup
+      system_command("pkill -TERM -f '#{chef_init_cmd}'")
+
+      # wait for things to cleanup
+      sleep 15
+      cleanup_test_environment
+
+      check_for_leftover_supervisor_processes("onboot")
+    end
+
+    ####
+    # Bootstrap Tests
+    ####
+
+    #
+    # Failing chef-init --bootstrap run
+    #
+    def failing_bootstrap_run
+      setup_test_environment
+
+      fail_chef_run = ChefInit::Test.new("bootstrap: failing chef-client exit" \
+        " codes are honored")
+
+      failing_command = system_command("#{omnibus_bin_dir}/chef-init " \
+        '--bootstrap ' \
+        "--config #{tempdir}/zero.rb " \
+        "--json-attributes #{tempdir}/bad-first-boot.json " \
+        "--log_level #{ChefInit::Log.level}")
+
+      # Test to make sure that a non-zero exit code was returned
+      if failing_command.exitstatus == 0
+        fail_chef_run.fail "bootstrap: chef-init does not honor failing exit" \
+          " code from chef-client"
+        puts failing_command.stdout
+      else
+        fail_chef_run.pass
+      end
+
+      # Make sure that there are no leftover supervisor processes
+      check_for_leftover_supervisor_processes("failing bootstrap")
+
+      cleanup_test_environment
+    end
+
+    #
+    # Passing chef-init --boostrap run
+    #
+    def passing_bootstrap_run
+      setup_test_environment
+
+      pass_chef_run = ChefInit::Test.new("bootstrap: passing chef-client exit" \
+        " codes are honored")
+
+      successful_command =system_command("#{omnibus_bin_dir}/chef-init " \
+        '--bootstrap ' \
+        "--config #{tempdir}/zero.rb " \
+        "--json-attributes #{tempdir}/good-first-boot.json " \
+        "--log_level warn")
+
+      if successful_command.exitstatus == 0
+        pass_chef_run.pass
+      else
+        pass_chef_run.fail "bootstrap: chef-init does not honor passing exit" \
+          " code from chef-client"
+        puts successful_command.stdout
+      end
+
+      # Make sure that there are no leftover supervisor processes
+      check_for_leftover_supervisor_processes("successful bootstrap")
+
+      cleanup_test_environment
+    end
+
+    ####
+    # Helper Methods
+    ####
+
+    #
+    # Make sure that no supervisor processes are left over after exit
+    #
+    def check_for_leftover_supervisor_processes(tag)
+      # wait for a few seconds to let things close down
+      sleep 5
+
+      leftover_processes = ChefInit::Test.new("#{tag} - supervisor processes" \
+        " are cleaned up")
+
+      # Check to runsvdir
+      runsvdir_check = system_command("ps aux | grep bin\/runsvdi[r]")
+      runsv_check = system_command("ps aux | grep runs[v] chef\-init")
+      test_tool_check = system_command("ps aux | grep chef-init-tes[t]")
+
+      case
+      when !runsvdir_check.stdout.empty?
+        leftover_processes.fail "#{tag} - runsvdir is still running"
+        puts runsvdir_check.stdout
+      when !runsv_check.stdout.empty?
+        leftover_processes.fail "#{tag} - runsv is still running"
+        puts runsv_check.stdout
+      when !test_tool_check.stdout.empty?
+        leftover_processes.fail "#{tag} - chef-init-test is still running"
+        puts test_tool_check.stdout
+      else
+        leftover_processes.pass
       end
     end
 
-    ##
-    # Helper Methods
-    #
     def setup_test_environment
-      # chef-init requirements
-      File.open(File.join(tempdir, 'zero.rb'), "w") do |f|
-        f.write(zero_config_string)
-      end
-      File.open(File.join(tempdir, 'first-boot.json'), "w") do |f|
-        f.write(first_boot_string)
-      end
-
-      test_cookbook_path = File.join(tempdir, 'cookbooks', 'test')
-      FileUtils.mkdir_p(test_cookbook_path)
-      File.open(File.join(test_cookbook_path, 'metadata.rb'), "w") do |f|
-        f.write(metadata_string)
-      end
-
-      test_recipe_path = File.join(test_cookbook_path, 'recipes')
-      FileUtils.mkdir_p(test_recipe_path)
-      File.open(File.join(test_recipe_path, 'default.rb'), "w") do |f|
-        f.write(recipe_string)
-      end
+      FileUtils.mkdir_p(tempdir)
+      FileUtils.cp_r "#{data_path}/.", tempdir
     end
 
     def cleanup_test_environment
-      system_command("sudo /opt/chef/embedded/bin/sv shutdown /opt/chef/service/*")
-      FileUtils.rm_rf(File.join(tempdir, 'zero.rb'))
-      FileUtils.rm_rf(File.join(tempdir, 'first-boot.json'))
-      FileUtils.rm_rf('/opt/chef/sv')
-      FileUtils.rm_rf('/opt/chef/service')
-      system_command("sudo apt-get -y remove --purge polipo")
       clear_tempdir
-    end
-
-    def reset_tempdir
-      clear_tempdir
-      FileUtils.mkdir_p(tempdir)
     end
 
     def clear_tempdir
       FileUtils.rm_rf(tempdir)
+      FileUtils.rm_rf('/opt/chef/sv')
+      FileUtils.rm_rf('/opt/chef/service')
       @tmpdir = nil
     end
 
@@ -207,50 +303,5 @@ module ChefInit
       @tmpdir ||= Dir.mktmpdir("chef")
       File.realpath(@tmpdir)
     end
-
-
-    # I took these strings and put them into their own functions near the end so the code above is
-    # a little easier to read.
-    def zero_config_string
-      <<-ZERO_CONFIG
-require 'chef-init'
-
-cookbook_path   ["#{tempdir}/cookbooks"]
-ssl_verify_mode   :verify_peer
-      ZERO_CONFIG
-    end
-
-    def first_boot_string
-      <<-FIRST_BOOT
-{
-  "run_list": ["recipe[test]"],
-  "container_service": {
-    "polipo": {
-      "command": "/usr/bin/polipo"
-    }
-  }
-}
-      FIRST_BOOT
-    end
-
-    def metadata_string
-      <<-METADATA
-name "test"
-
-      METADATA
-    end
-
-    def recipe_string
-      <<-RECIPE
-package 'polipo' do
-  action :install
-end
-
-service 'polipo' do
-  action :start
-end
-      RECIPE
-    end
-
   end
 end

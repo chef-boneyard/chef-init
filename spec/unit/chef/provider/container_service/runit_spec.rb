@@ -31,12 +31,12 @@ describe Chef::Provider::ContainerService::Runit do
     @events = Chef::EventDispatch::Dispatcher.new
     @run_context = Chef::RunContext.new(@node, {},  @events)
 
-    @new_resource = Chef::Resource::ContainerService.new("foo", @run_context)
-    @current_resource = Chef::Resource::ContainerService.new("foo", @run_context)
+    @new_resource = Chef::Resource::Service.new("foo", @run_context)
+    @current_resource = Chef::Resource::Service.new("foo", @run_context)
 
     @provider = Chef::Provider::ContainerService::Runit.new(@new_resource, @run_context)
 
-    Chef::Resource::ContainerService.stub(:new).and_return(@current_resource)
+    Chef::Resource::Service.stub(:new).and_return(@current_resource)
   end
 
   describe "#initialize" do
@@ -99,13 +99,14 @@ describe Chef::Provider::ContainerService::Runit do
       end
     end
 
-    it "should inspect current state of system and return a new Chef::Resource::Supervisor object" do
-      expect(@provider.load_current_resource).to be_a_instance_of(Chef::Resource::ContainerService)
+    it "should inspect current state of system and return a new Chef::Resource::Service object" do
+      expect(@provider.load_current_resource).to be_a_instance_of(Chef::Resource::Service)
     end
   end
 
   describe "#setup" do
     let(:staging_dir) { double("staging_dir", run_action: nil) }
+    let(:service_dir) { double("service_dir", run_action: nil) }
     let(:down_file) { double("down_file", run_action: nil) }
     let(:run_script) { double("run_script", run_action: nil) }
     let(:log_dir) { double("log_dir", run_action: nil) }
@@ -115,6 +116,7 @@ describe Chef::Provider::ContainerService::Runit do
 
     before do
       @provider.stub(:staging_dir).and_return(staging_dir)
+      @provider.stub(:service_dir).and_return(service_dir)
       @provider.stub(:down_file).and_return(down_file)
       @provider.stub(:run_script).and_return(run_script)
       @provider.stub(:log_dir).and_return(log_dir)
@@ -127,6 +129,7 @@ describe Chef::Provider::ContainerService::Runit do
 
     it 'creates the service directory and run scripts' do
       expect(staging_dir).to receive(:run_action).with(:create)
+      expect(service_dir).to receive(:run_action).with(:create)
       expect(down_file).to receive(:run_action).with(:create)
       expect(run_script).to receive(:run_action).with(:create)
       expect(log_dir).to receive(:run_action).with(:create)

@@ -15,16 +15,18 @@
 # limitations under the License.
 #
 
+require 'chef/resource/service'
 require 'chef/provider/container_service/runit'
 
 class Chef
   class Resource
-    class ContainerService < Chef::Resource::Service
+    class Service
 
-      provides :service, :on_platforms => :all
+      alias_method :orig_initialize, :initialize
 
       def initialize(name, run_context = nil)
-        super
+        orig_initialize(name, run_context)
+
         if container_service_command_specified?
           @provider = Chef::Provider::ContainerService::Runit
         end
@@ -33,11 +35,14 @@ class Chef
       def container_service_command_specified?
         if @run_context.node.key?("container_service")
           if @run_context.node["container_service"].key?(@service_name)
+            Chef::Log.debug("container_service command found for service[#{@service_name}].")
             return true
           else
+            Chef::Log.debug("container_service command NOT found for service[#{@service_name}].")
             return false
           end
         else
+          Chef::Log.debug("No container_service commands found.")
           return false
         end
       end

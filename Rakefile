@@ -13,5 +13,22 @@ rescue LoadError
   end
 end
 
-task :default => :spec
+desc 'build a dev docker image with the latest code'
+task :build_dev do
+  Rake::Task['build'].invoke
+  system 'docker build -t chef-init-dev ./'
+end
 
+desc 'verify the dev docker image'
+task :verify do
+  pid = `docker run -d chef-init-dev chef-init --verify --log_level debug`
+  system "docker logs -f #{pid}"
+end
+
+desc 'build and verify chef-init'
+task :build_and_verify do
+  Rake::Task['build_dev'].invoke
+  Rake::Task['verify'].invoke
+end
+
+task :default => :spec
