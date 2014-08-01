@@ -68,6 +68,10 @@ module ChefInit
       "/opt/chef/embedded/bin"
     end
 
+    def data_path
+      File.expand_path(File.dirname(__FILE__) + "../../../data")
+    end
+
     def path
       "#{omnibus_root}/bin:#{omnibus_root}/embedded/bin:/usr/local/bin:/usr/local/sbin:/bin:/sbin:/usr/bin:/usr/sbin"
     end
