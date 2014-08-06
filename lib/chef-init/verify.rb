@@ -154,7 +154,7 @@ module ChefInit
       Process.spawn(chef_init_cmd, out:"#{tempdir}/chef-init-log")
 
       # Wait a bit for chef-client to run
-      sleep 10
+      sleep 20
 
       # Does it start the runit process?
       runsvdir_started = ChefInit::Test.new("runsvdir started")
