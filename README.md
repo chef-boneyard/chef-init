@@ -1,14 +1,14 @@
 # chef-init
-[![Gem Version](https://badge.fury.io/rb/chef-init.png)](http://badge.fury.io/rb/chef-init) [![Build Status](https://travis-ci.org/opscode/chef-init.svg?branch=master)](https://travis-ci.org/opscode/chef-init)
+[![Build Status](https://travis-ci.org/opscode/chef-init.svg?branch=master)](https://travis-ci.org/opscode/chef-init)
 
-chef-init is a RubyGem that is distributed with [chef-container] and intended to be used as PID1 inside Linux Containers. 
+chef-init is a RubyGem that is distributed with [chef-container] and intended to be used as PID1 inside Linux Containers.
 
-Its primary purpose is to provide an interface with which to safely launch a chef-client run and a process supervisor to manage the services that your Chef recipes create. 
+Its primary purpose is to provide an interface with which to safely launch a chef-client run and a process supervisor to manage the services that your Chef recipes create.
 
 Its secondary purpose is to provide useful Chef Resources and Recipe DSLs that you can use to interface more cleanly with the process supervisor.
 
 ## Installation
-This RubyGem is already bundled with [chef-container] and should not be install separately at this time.
+This RubyGem is already bundled with [chef-container](http://github.com/opscode/chef-container) and should not be install separately.
 
 ## Usage
 Check out the documentation [here](http://docs.opscode.com/containers.html)
@@ -36,4 +36,3 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-
