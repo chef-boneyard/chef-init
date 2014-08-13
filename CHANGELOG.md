@@ -1,6 +1,16 @@
 # Chef Init Changelog
 
-## Latest Release: 0.2.0
+## v0.3.1 (2014-08-13)
+* Fixed bug when load_current_resource does not pass in run_context to service
+resource.
+
+## v0.3.0 (2014-08-11)
+* Add `chef-init --verify` command to use to test installation of package.
+* Modify internal testing processes including fixtures and types of tests.
+* Replace `Chef::Resource::ContainerService` with monkeypatch of
+`Chef::Resource::Service` for increased stability.
+
+## v0.2.0 (2014-07-16)
 * CLI - Initial Release
   * `--bootstrap` - Launch runit, execute chef-client, then exit.
   * `--onboot` - Launch runit, execute chef-client, then stay alive.
