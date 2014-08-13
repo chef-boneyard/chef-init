@@ -3,6 +3,8 @@
 ## v1.0.0.rc.0
 * Add `chef-init --verify` command to use to test installation of package.
 * Modify internal testing processes including fixtures and types of tests.
+* Replace `Chef::Resource::ContainerService` with monkeypatch of
+`Chef::Resource::Service` for increased stability.
 
 ## v0.2.0 (2014-07-16)
 * CLI - Initial Release

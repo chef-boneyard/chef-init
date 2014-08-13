@@ -24,25 +24,31 @@ class Chef
 
       alias_method :orig_initialize, :initialize
 
-      def initialize(name, run_context = nil)
+      def initialize(name, run_context=nil)
         orig_initialize(name, run_context)
 
         if container_service_command_specified?
+          Chef::Log.info("Provider for service[#{@service_name}] has been " \
+            "replaced with Chef::Provider::ContainerService::Runit")
           @provider = Chef::Provider::ContainerService::Runit
         end
       end
 
       def container_service_command_specified?
-        if @run_context.node.key?("container_service")
-          if @run_context.node["container_service"].key?(@service_name)
-            Chef::Log.debug("container_service command found for service[#{@service_name}].")
-            return true
+        unless @run_context.nil? || @run_context.node.nil?
+          if @run_context.node.key?("container_service")
+            if @run_context.node["container_service"].key?(@service_name)
+              Chef::Log.debug("container_service command found for service[#{@service_name}].")
+              return true
+            else
+              Chef::Log.debug("container_service command NOT found for service[#{@service_name}].")
+              return false
+            end
           else
-            Chef::Log.debug("container_service command NOT found for service[#{@service_name}].")
+            Chef::Log.debug("No container_service commands found.")
             return false
           end
         else
-          Chef::Log.debug("No container_service commands found.")
           return false
         end
       end
