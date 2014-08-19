@@ -16,5 +16,5 @@
 #
 
 module ChefInit
-  VERSION = "1.0.0.rc.0"
+  VERSION = "1.0.0"
 end

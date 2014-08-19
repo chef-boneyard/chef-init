@@ -294,6 +294,7 @@ describe ChefInit::CLI do
       cli.stub(:delete_client_key)
       cli.stub(:delete_node_name_file)
       cli.stub(:shutdown_supervisor)
+      cli.stub(:empty_secure_directory)
       Process.stub(:wait).with(supervisor_pid)
       Process.stub(:wait).with(chefrun_pid)
       cli.stub(:kill)
@@ -334,6 +335,22 @@ describe ChefInit::CLI do
       expect(cli).to receive(:exit).with(true)
       cli.launch_bootstrap
     end
+
+    it "deletes the secure directory" do
+      expect(cli).to receive(:empty_secure_directory)
+      expect(cli).to receive(:exit).with(true)
+      cli.launch_bootstrap
+    end
+
+    context "when --no-delete-secure is specified" do
+      before { cli.config[:remove_secure] = false }
+      it "does not delete the secure directory" do
+        expect(cli).not_to receive(:empty_secure_directory)
+        expect(cli).to receive(:exit).with(true)
+        cli.launch_bootstrap
+      end
+    end
+
   end
 
   describe "#launch_supervisor" do
