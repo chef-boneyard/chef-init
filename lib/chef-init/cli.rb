@@ -58,6 +58,12 @@ module ChefInit
       :boolean      => true,
       :default      => false
 
+    option :remove_secure,
+      :long         => "--[no-]remove-secure",
+      :description  => "Remove secure credentials from image.",
+      :boolean      => true,
+      :default      => true
+
     option :verify,
       :long         => "--verify",
       :description  => "Verify installation",
@@ -201,6 +207,8 @@ module ChefInit
       delete_client_key
       ChefInit::Log.debug("Removing node name file...")
       delete_node_name_file
+      ChefInit::Log.info("Emptying secure folder...")
+      empty_secure_directory if config[:remove_secure]
 
       shutdown_supervisor
 
@@ -307,6 +315,10 @@ module ChefInit
 
     def supervisor_launch_command
       "#{omnibus_embedded_bin_dir}/runsvdir -P #{omnibus_root}/service 'log: #{ '.' * 395}'"
+    end
+
+    def empty_secure_directory
+      FileUtils.rm_rf("/etc/chef/secure/.", secure: true)
     end
 
     def delete_client_key
