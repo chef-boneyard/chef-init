@@ -200,7 +200,7 @@ module ChefInit
       delete_node_name_file
 
       shutdown_supervisor
-
+      waitpid_reap_other_children(@supervisor)
       exit chef_client_exitstatus
     end
 
@@ -273,13 +273,13 @@ module ChefInit
       if @terminated_child_processes.include?(pid)
         return @terminated_child_processes.delete(pid)
       end
-      done = False
-      status = None
+      done = false
+      status = nil
       until done
         begin
           this_pid, status = Process.wait2(-1, 0)
           if this_pid == pid
-            done = True
+            done = true
           else
             @terminated_child_processes[this_pid] = status
           end
@@ -287,8 +287,9 @@ module ChefInit
           return
         rescue Errno::ESRCH => e
           return
-        else
-          raise
+        rescue Exception => e
+          puts e
+          raise e
         end
       end
       return status
