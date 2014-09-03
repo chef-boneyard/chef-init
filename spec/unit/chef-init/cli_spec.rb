@@ -234,9 +234,9 @@ describe ChefInit::CLI do
       cli.stub(:launch_supervisor).and_return(supervisor_pid)
       cli.stub(:wait_for_supervisor)
       cli.stub(:run_chef_client).and_return(chefrun_pid)
+      cli.stub(:waitpid_reap_other_children).with(chefrun_pid).and_return(0)
+      cli.stub(:waitpid_reap_other_children).with(supervisor_pid).and_return(0)
       cli.stub(:delete_validation_key)
-      Process.stub(:wait).with(supervisor_pid)
-      Process.stub(:wait).with(chefrun_pid)
     end
 
     it "launches process supervisor" do
@@ -258,7 +258,7 @@ describe ChefInit::CLI do
     end
 
     it 'waits for chef-client to finish' do
-      expect(Process).to receive(:wait).with(chefrun_pid)
+      expect(cli).to receive(:waitpid_reap_other_children).with(chefrun_pid).and_return(0)
       expect(cli).to receive(:exit).with(true)
       cli.launch_onboot
     end
@@ -277,7 +277,7 @@ describe ChefInit::CLI do
     end
 
     it "waits for supervisor to exit" do
-      expect(Process).to receive(:wait).with(supervisor_pid)
+      expect(cli).to receive(:waitpid_reap_other_children).with(supervisor_pid).and_return(0)
       expect(cli).to receive(:exit).with(true)
       cli.launch_onboot
     end
@@ -291,11 +291,10 @@ describe ChefInit::CLI do
       cli.stub(:launch_supervisor).and_return(supervisor_pid)
       cli.stub(:wait_for_supervisor)
       cli.stub(:run_chef_client).and_return(chefrun_pid)
+      cli.stub(:waitpid_reap_other_children).with(chefrun_pid).and_return(0)
       cli.stub(:delete_client_key)
       cli.stub(:delete_node_name_file)
       cli.stub(:shutdown_supervisor)
-      Process.stub(:wait).with(supervisor_pid)
-      Process.stub(:wait).with(chefrun_pid)
       cli.stub(:kill)
     end
 
@@ -311,8 +310,14 @@ describe ChefInit::CLI do
       cli.launch_bootstrap
     end
 
-    it "executes and wait for chef-client" do
+    it "executes chef-client" do
       expect(cli).to receive(:run_chef_client).and_return(chefrun_pid)
+      expect(cli).to receive(:exit).with(true)
+      cli.launch_bootstrap
+    end
+
+    it 'waits for chef-client to finish' do
+      expect(cli).to receive(:waitpid_reap_other_children).with(chefrun_pid).and_return(0)
       expect(cli).to receive(:exit).with(true)
       cli.launch_bootstrap
     end

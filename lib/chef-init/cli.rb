@@ -207,7 +207,6 @@ module ChefInit
       delete_node_name_file
 
       shutdown_supervisor
-      waitpid_reap_other_children(@supervisor)
       exit chef_client_exitstatus
     end
 
