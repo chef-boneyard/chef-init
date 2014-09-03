@@ -58,6 +58,13 @@ module ChefInit
       :boolean      => true,
       :default      => false
 
+    option :fork,
+      :short        => "-f",
+      :long         => "--fork",
+      :description  => "",
+      :boolean      => true,
+      :default      => false
+
     option :verify,
       :long         => "--verify",
       :description  => "Verify installation",
@@ -260,6 +267,10 @@ module ChefInit
         command << "-z"
       end
 
+      if config[:fork]
+        command << "-f"
+      end
+
       unless config[:environment].nil?
         command << "-E #{config[:environment]}"
       end
@@ -269,8 +280,16 @@ module ChefInit
 
     private
 
+    # Waits for the child process with the given PID, while at the same time
+    # reaping any other child processes that have exited (e.g. adopted child
+    # processes that have terminated).
+    # (code from https://github.com/phusion/baseimage-docker translated from python)
     def waitpid_reap_other_children(pid)
       if @terminated_child_processes.include?(pid)
+        # A previous call to waitpid_reap_other_children(),
+        # with an argument not equal to the current argument,
+        # already waited for this process. Return the status
+        # that was obtained back then.
         return @terminated_child_processes.delete(pid)
       end
       done = false
@@ -281,6 +300,7 @@ module ChefInit
           if this_pid == pid
             done = true
           else
+            # Save status for later.
             @terminated_child_processes[this_pid] = status
           end
         rescue Errno::ECHILD => e
