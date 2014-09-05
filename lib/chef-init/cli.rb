@@ -292,9 +292,7 @@ module ChefInit
             # Save status for later.
             @terminated_child_processes[this_pid] = status
           end
-        rescue Errno::ECHILD => e
-          return
-        rescue Errno::ESRCH => e
+        rescue Errno::ECHILD, Errno::ESRCH
           return
         rescue Exception => e
           puts e
