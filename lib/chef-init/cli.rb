@@ -220,13 +220,7 @@ module ChefInit
     #
     def launch_supervisor
       fork do
-        exec(
-          {"PATH" => path},
-          "#{omnibus_embedded_bin_dir}/runsvdir",
-          "-P",
-          "#{omnibus_root}/service",
-          "'log: #{ '.' * 395}'"
-        )
+        exec({"PATH" => path}, supervisor_launch_command)
       end
     end
 
