@@ -58,13 +58,6 @@ module ChefInit
       :boolean      => true,
       :default      => false
 
-    option :fork,
-      :short        => "-f",
-      :long         => "--fork",
-      :description  => "",
-      :boolean      => true,
-      :default      => false
-
     option :verify,
       :long         => "--verify",
       :description  => "Verify installation",
@@ -207,6 +200,7 @@ module ChefInit
       delete_node_name_file
 
       shutdown_supervisor
+
       exit chef_client_exitstatus
     end
 
@@ -264,10 +258,6 @@ module ChefInit
 
       if config[:local_mode]
         command << "-z"
-      end
-
-      if config[:fork]
-        command << "-f"
       end
 
       unless config[:environment].nil?
