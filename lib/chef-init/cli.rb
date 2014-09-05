@@ -294,9 +294,6 @@ module ChefInit
           end
         rescue Errno::ECHILD, Errno::ESRCH
           return
-        rescue Exception => e
-          puts e
-          raise e
         end
       end
       return status
