@@ -28,7 +28,7 @@ describe ChefInit::Helpers do
   describe ".system_command" do
     before do
      @klass = FakeClass.new
-     Mixlib::ShellOut.stub(:new).with("true").and_return(cmd)
+     allow(Mixlib::ShellOut).to receive(:new).with("true").and_return(cmd)
     end
 
     let(:cmd) { double("ShellOut Object", run_command: nil)}
@@ -52,7 +52,7 @@ describe ChefInit::Helpers do
   describe ".err" do
     before do
       @klass = FakeClass.new
-      @klass.stub(:stderr).and_return(stderr_io)  
+      allow(@klass).to receive(:stderr).and_return(stderr_io)
     end
 
     it "should print message to stderr" do
@@ -64,7 +64,7 @@ describe ChefInit::Helpers do
   describe ".msg" do
     before do
       @klass = FakeClass.new
-      @klass.stub(:stdout).and_return(stdout_io)  
+      allow(@klass).to receive(:stdout).and_return(stdout_io)
     end
 
     it "should print message to stdout" do
@@ -74,7 +74,7 @@ describe ChefInit::Helpers do
   end
 
   describe ".omnibus_root" do
-    before do 
+    before do
       @klass = FakeClass.new
     end
 
