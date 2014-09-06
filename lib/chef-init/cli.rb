@@ -83,6 +83,7 @@ module ChefInit
       @argv = argv
       @max_retries = max_retries
       @terminated_child_processes = {}
+      @monitor_child_processes = []
       super()
     end
 
@@ -161,6 +162,7 @@ module ChefInit
 
       ChefInit::Log.info("Starting Supervisor...")
       @supervisor = launch_supervisor
+      @monitor_child_processes << @supervisor
       ChefInit::Log.info("Supervisor pid: #{@supervisor}")
 
       ChefInit::Log.debug("Waiting for Supervisor to start...")
@@ -168,6 +170,7 @@ module ChefInit
 
       ChefInit::Log.info("Starting chef-client run...")
       @chef_client = run_chef_client
+      @monitor_child_processes << @chef_client
       waitpid_reap_other_children(@chef_client)
 
       ChefInit::Log.debug("Deleting validation key")
@@ -191,7 +194,7 @@ module ChefInit
 
       ChefInit::Log.info("Starting chef-client run...")
       @chef_client = run_chef_client
-
+      @monitor_child_processes << @chef_client
       chef_client_exitstatus = waitpid_reap_other_children(@chef_client) == 0
 
       ChefInit::Log.info("Deleting client key...")
@@ -288,15 +291,14 @@ module ChefInit
           this_pid, status = Process.wait2(-1, 0)
           if this_pid == pid
             done = true
-          else
-            # Save status for later.
+          elsif @monitor_child_processes.include?(pid)
             @terminated_child_processes[this_pid] = status
           end
         rescue Errno::ECHILD, Errno::ESRCH
           return
         end
       end
-      return status
+      status
     end
 
     def wait_for_supervisor
