@@ -82,6 +82,8 @@ module ChefInit
     def initialize(argv, max_retries=5)
       @argv = argv
       @max_retries = max_retries
+      @terminated_child_processes = {}
+      @monitor_child_processes = []
       super()
     end
 
@@ -160,6 +162,7 @@ module ChefInit
 
       ChefInit::Log.info("Starting Supervisor...")
       @supervisor = launch_supervisor
+      @monitor_child_processes << @supervisor
       ChefInit::Log.info("Supervisor pid: #{@supervisor}")
 
       ChefInit::Log.debug("Waiting for Supervisor to start...")
@@ -167,12 +170,13 @@ module ChefInit
 
       ChefInit::Log.info("Starting chef-client run...")
       @chef_client = run_chef_client
-      Process.wait @chef_client
+      @monitor_child_processes << @chef_client
+      waitpid_reap_other_children(@chef_client)
 
       ChefInit::Log.debug("Deleting validation key")
       delete_validation_key
 
-      Process.wait @supervisor
+      waitpid_reap_other_children(@supervisor)
 
       exit true
     end
@@ -190,8 +194,8 @@ module ChefInit
 
       ChefInit::Log.info("Starting chef-client run...")
       @chef_client = run_chef_client
-      Process.wait @chef_client
-      chef_client_exitstatus = $?.exitstatus == 0
+      @monitor_child_processes << @chef_client
+      chef_client_exitstatus = waitpid_reap_other_children(@chef_client) == 0
 
       ChefInit::Log.info("Deleting client key...")
       delete_client_key
@@ -267,6 +271,35 @@ module ChefInit
     end
 
     private
+
+    # Waits for the child process with the given PID, while at the same time
+    # reaping any other child processes that have exited (e.g. adopted child
+    # processes that have terminated).
+    # (code from https://github.com/phusion/baseimage-docker translated from python)
+    def waitpid_reap_other_children(pid)
+      if @terminated_child_processes.include?(pid)
+        # A previous call to waitpid_reap_other_children(),
+        # with an argument not equal to the current argument,
+        # already waited for this process. Return the status
+        # that was obtained back then.
+        return @terminated_child_processes.delete(pid)
+      end
+      done = false
+      status = nil
+      until done
+        begin
+          this_pid, status = Process.wait2(-1, 0)
+          if this_pid == pid
+            done = true
+          elsif @monitor_child_processes.include?(pid)
+            @terminated_child_processes[this_pid] = status
+          end
+        rescue Errno::ECHILD, Errno::ESRCH
+          return
+        end
+      end
+      status
+    end
 
     def wait_for_supervisor
       sleep 5
