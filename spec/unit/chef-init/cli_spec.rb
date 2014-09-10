@@ -34,26 +34,26 @@ describe ChefInit::CLI do
   end
 
   before do
-    ChefInit::Log.stub(:info)
+    allow(ChefInit::Log).to receive(:info)
 
     # by default, we are running in local-mode
-    File.stub(:exist?).with("/etc/chef/zero.rb").and_return(true)
-    File.stub(:exist?).with("/etc/chef/.node_name").and_return(false)
-    File.stub(:exist?).with("/etc/chef/secure/validation.pem").and_return(true)
-    File.stub(:exist?).with("/etc/chef/secure/client.pem").and_return(false)
+    allow(File).to receive(:exist?).with("/etc/chef/zero.rb").and_return(true)
+    allow(File).to receive(:exist?).with("/etc/chef/.node_name").and_return(false)
+    allow(File).to receive(:exist?).with("/etc/chef/secure/validation.pem").and_return(true)
+    allow(File).to receive(:exist?).with("/etc/chef/secure/client.pem").and_return(false)
   end
 
   subject(:cli) do
     ChefInit::CLI.new(argv, max_retries).tap do |c|
-      c.stub(:stdout).and_return(stdout_io)
-      c.stub(:stderr).and_return(stderr_io)
+      allow(c).to receive(:stdout).and_return(stdout_io)
+      allow(c).to receive(:stderr).and_return(stderr_io)
     end
   end
 
   describe "#run" do
     before do
-      cli.stub(:launch_onboot)
-      cli.stub(:launch_bootstrap)
+      allow(cli).to receive(:launch_onboot)
+      allow(cli).to receive(:launch_bootstrap)
     end
 
     describe "when the application starts" do
@@ -99,7 +99,7 @@ describe ChefInit::CLI do
       let(:verify) { double("ChefInit::Verify", run: nil) }
 
       it "runs the verification process" do
-        ChefInit::Verify.stub(:new).and_return(verify)
+        allow(ChefInit::Verify).to receive(:new).and_return(verify)
         expect(verify).to receive(:run)
         cli.run
       end
@@ -141,8 +141,8 @@ describe ChefInit::CLI do
   describe "#set_default_options" do
     context "when zero.rb exists" do
       before do
-        File.stub(:exist?).with("/etc/chef/zero.rb").and_return(true)
-        File.stub(:exist?).with("/etc/chef/client.rb").and_return(false)
+        allow(File).to receive(:exist?).with("/etc/chef/zero.rb").and_return(true)
+        allow(File).to receive(:exist?).with("/etc/chef/client.rb").and_return(false)
       end
 
       it "sets local-mode defaults" do
@@ -153,8 +153,8 @@ describe ChefInit::CLI do
 
     context "when client.rb exists" do
       before do
-        File.stub(:exist?).with("/etc/chef/zero.rb").and_return(false)
-        File.stub(:exist?).with("/etc/chef/client.rb").and_return(true)
+        allow(File).to receive(:exist?).with("/etc/chef/zero.rb").and_return(false)
+        allow(File).to receive(:exist?).with("/etc/chef/client.rb").and_return(true)
       end
 
       it "sets client-mode defaults" do
@@ -164,10 +164,10 @@ describe ChefInit::CLI do
 
       context "with missing validator and client keys" do
         before do
-          File.stub(:exist?).with("/etc/chef/client.rb").and_return(true)
-          File.stub(:exist?).with("/etc/chef/zero.rb").and_return(false)
-          File.stub(:exist?).with("/etc/chef/secure/validation.pem").and_return(false)
-          File.stub(:exist?).with("/etc/chef/secure/client.pem").and_return(false)
+          allow(File).to receive(:exist?).with("/etc/chef/client.rb").and_return(true)
+          allow(File).to receive(:exist?).with("/etc/chef/zero.rb").and_return(false)
+          allow(File).to receive(:exist?).with("/etc/chef/secure/validation.pem").and_return(false)
+          allow(File).to receive(:exist?).with("/etc/chef/secure/client.pem").and_return(false)
         end
 
         it "errors out and prints a message" do
@@ -182,8 +182,8 @@ describe ChefInit::CLI do
 
     context "when valid configuration file does not exist" do
       before do
-        File.stub(:exist?).with("/etc/chef/client.rb").and_return(false)
-        File.stub(:exist?).with("/etc/chef/zero.rb").and_return(false)
+        allow(File).to receive(:exist?).with("/etc/chef/client.rb").and_return(false)
+        allow(File).to receive(:exist?).with("/etc/chef/zero.rb").and_return(false)
       end
 
       it "exits with error" do
@@ -231,12 +231,14 @@ describe ChefInit::CLI do
     let(:chefrun_pid) { 1001 }
 
     before do
-      cli.stub(:launch_supervisor).and_return(supervisor_pid)
-      cli.stub(:wait_for_supervisor)
-      cli.stub(:run_chef_client).and_return(chefrun_pid)
-      cli.stub(:waitpid_reap_other_children).with(chefrun_pid).and_return(0)
-      cli.stub(:waitpid_reap_other_children).with(supervisor_pid).and_return(0)
-      cli.stub(:delete_validation_key)
+      allow(cli).to receive(:launch_supervisor).and_return(supervisor_pid)
+      allow(cli).to receive(:wait_for_supervisor)
+      allow(cli).to receive(:run_chef_client).and_return(chefrun_pid)
+      allow(cli).to receive(:waitpid_reap_other_children).with(chefrun_pid).and_return(0)
+      allow(cli).to receive(:waitpid_reap_other_children).with(supervisor_pid).and_return(0)
+      allow(cli).to receive(:delete_validation_key)
+      allow(Process).to receive(:wait).with(supervisor_pid)
+      allow(Process).to receive(:wait).with(chefrun_pid)
     end
 
     it "launches process supervisor" do
@@ -288,14 +290,15 @@ describe ChefInit::CLI do
     let(:chefrun_pid) { 1001 }
 
     before do
-      cli.stub(:launch_supervisor).and_return(supervisor_pid)
-      cli.stub(:wait_for_supervisor)
-      cli.stub(:run_chef_client).and_return(chefrun_pid)
-      cli.stub(:waitpid_reap_other_children).with(chefrun_pid).and_return(0)
-      cli.stub(:delete_client_key)
-      cli.stub(:delete_node_name_file)
-      cli.stub(:shutdown_supervisor)
-      cli.stub(:kill)
+      allow(cli).to receive(:launch_supervisor).and_return(supervisor_pid)
+      allow(cli).to receive(:wait_for_supervisor)
+      allow(cli).to receive(:run_chef_client).and_return(chefrun_pid)
+      allow(cli).to receive(:waitpid_reap_other_children).with(chefrun_pid).and_return(0)
+      allow(cli).to receive(:delete_client_key)
+      allow(cli).to receive(:delete_node_name_file)
+      allow(cli).to receive(:shutdown_supervisor)
+      allow(cli).to receive(:empty_secure_directory)
+      allow(cli).to receive(:kill)
     end
 
     it "launches the process supervisor" do
@@ -339,6 +342,22 @@ describe ChefInit::CLI do
       expect(cli).to receive(:exit).with(true)
       cli.launch_bootstrap
     end
+
+    it "deletes the secure directory" do
+      expect(cli).to receive(:empty_secure_directory)
+      expect(cli).to receive(:exit).with(true)
+      cli.launch_bootstrap
+    end
+
+    context "when --no-delete-secure is specified" do
+      before { cli.config[:remove_secure] = false }
+      it "does not delete the secure directory" do
+        expect(cli).not_to receive(:empty_secure_directory)
+        expect(cli).to receive(:exit).with(true)
+        cli.launch_bootstrap
+      end
+    end
+
   end
 
   describe "#launch_supervisor" do
@@ -346,10 +365,7 @@ describe ChefInit::CLI do
       expect(cli).to receive(:fork) do |&block|
         expect(cli).to receive(:exec).with(
           {"PATH" => cli.path},
-          "/opt/chef/embedded/bin/runsvdir",
-          "-P",
-          "/opt/chef/service",
-          "'log: #{ '.' * 395}'"
+          "/opt/chef/embedded/bin/runsvdir -P /opt/chef/service 'log: #{ '.' * 395}'"
         )
         block.call
       end
@@ -358,7 +374,7 @@ describe ChefInit::CLI do
   end
 
   describe "#run_chef_client" do
-    before { cli.stub(:chef_client_command).and_return("chef-client") }
+    before { allow(cli).to receive(:chef_client_command).and_return("chef-client") }
 
     it "executes chef-client as a non-blocking sub-process" do
       expect(cli).to receive(:fork) do |&block|

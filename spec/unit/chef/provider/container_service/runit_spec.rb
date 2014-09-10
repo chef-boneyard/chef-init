@@ -36,7 +36,7 @@ describe Chef::Provider::ContainerService::Runit do
 
     @provider = Chef::Provider::ContainerService::Runit.new(@new_resource, @run_context)
 
-    Chef::Resource::Service.stub(:new).and_return(@current_resource)
+    allow(Chef::Resource::Service).to receive(:new).and_return(@current_resource)
   end
 
   describe "#initialize" do
@@ -50,9 +50,9 @@ describe Chef::Provider::ContainerService::Runit do
   describe "#load_current_resource" do
     let(:command_success) { double("ShellOut Object", exitstatus: 0, stdout: 'run: ok') }
     before do
-      @provider.stub(:running?)
-      @provider.stub(:enabled?)
-      @provider.stub(:setup)
+      allow(@provider).to receive(:running?)
+      allow(@provider).to receive(:enabled?)
+      allow(@provider).to receive(:setup)
     end
 
     it "should setup the runit prerequisites" do
@@ -61,15 +61,15 @@ describe Chef::Provider::ContainerService::Runit do
     end
 
     it "should set the service_name" do
-      @provider.stub(:running?).and_return(true)
-      @provider.stub(:enabled?).and_return(true)
+      allow(@provider).to receive(:running?).and_return(true)
+      allow(@provider).to receive(:enabled?).and_return(true)
       @provider.load_current_resource
       expect(@current_resource.service_name).to eql("foo")
     end
 
     context "when supervisor is already running" do
       it "should set running to be true" do
-        @provider.stub(:running?).and_return(true)
+        allow(@provider).to receive(:running?).and_return(true)
         @provider.load_current_resource
         expect(@current_resource.running).to eql(true)
       end
@@ -77,7 +77,7 @@ describe Chef::Provider::ContainerService::Runit do
 
     context "when supervisor is not running" do
       it "should set running to be false" do
-        @provider.stub(:running?).and_return(false)
+        allow(@provider).to receive(:running?).and_return(false)
         @provider.load_current_resource
         expect(@current_resource.running).to eql(false)
       end
@@ -85,7 +85,7 @@ describe Chef::Provider::ContainerService::Runit do
 
     context "when supervisor is already enabled" do
       it "should set enabled to be true" do
-        @provider.stub(:enabled?).and_return(true)
+        allow(@provider).to receive(:enabled?).and_return(true)
         @provider.load_current_resource
         expect(@current_resource.enabled).to eql(true)
       end
@@ -93,7 +93,7 @@ describe Chef::Provider::ContainerService::Runit do
 
     context "when supervisor is not enabled" do
       it "should set enabled to be false" do
-        @provider.stub(:enabled?).and_return(false)
+        allow(@provider).to receive(:enabled?).and_return(false)
         @provider.load_current_resource
         expect(@current_resource.enabled).to eql(false)
       end
@@ -115,16 +115,16 @@ describe Chef::Provider::ContainerService::Runit do
     let(:service_dir_link) { double("service_dir_link", run_action: nil) }
 
     before do
-      @provider.stub(:staging_dir).and_return(staging_dir)
-      @provider.stub(:service_dir).and_return(service_dir)
-      @provider.stub(:down_file).and_return(down_file)
-      @provider.stub(:run_script).and_return(run_script)
-      @provider.stub(:log_dir).and_return(log_dir)
-      @provider.stub(:log_main_dir).and_return(log_main_dir)
-      @provider.stub(:log_run_script).and_return(log_run_script)
-      @provider.stub(:service_dir_link).and_return(service_dir_link)
-      @provider.stub(:running?).and_return(true)
-      @provider.stub(:enabled?).and_return(false)
+      allow(@provider).to receive(:staging_dir).and_return(staging_dir)
+      allow(@provider).to receive(:service_dir).and_return(service_dir)
+      allow(@provider).to receive(:down_file).and_return(down_file)
+      allow(@provider).to receive(:run_script).and_return(run_script)
+      allow(@provider).to receive(:log_dir).and_return(log_dir)
+      allow(@provider).to receive(:log_main_dir).and_return(log_main_dir)
+      allow(@provider).to receive(:log_run_script).and_return(log_run_script)
+      allow(@provider).to receive(:service_dir_link).and_return(service_dir_link)
+      allow(@provider).to receive(:running?).and_return(true)
+      allow(@provider).to receive(:enabled?).and_return(false)
     end
 
     it 'creates the service directory and run scripts' do
@@ -147,7 +147,7 @@ describe Chef::Provider::ContainerService::Runit do
     let(:down_file) { double("down_file resource", run_action: nil) }
 
     before do
-      @provider.stub(:down_file).and_return(down_file)
+      allow(@provider).to receive(:down_file).and_return(down_file)
     end
 
     it 'should delete down_file' do
@@ -160,8 +160,8 @@ describe Chef::Provider::ContainerService::Runit do
     let(:down_file) { double("down_file resource", run_action: nil) }
 
     before do
-      @provider.stub(:down_file).and_return(down_file)
-      @provider.stub(:shell_out)
+      allow(@provider).to receive(:down_file).and_return(down_file)
+      allow(@provider).to receive(:shell_out)
     end
 
     it 'should create down_file' do
@@ -177,8 +177,8 @@ describe Chef::Provider::ContainerService::Runit do
 
   describe "#start_service" do
     before do
-      @provider.stub(:shell_out!)
-      @provider.stub(:wait_for_service_enable)
+      allow(@provider).to receive(:shell_out!)
+      allow(@provider).to receive(:wait_for_service_enable)
     end
 
     it 'should send start command via sv' do
@@ -190,7 +190,7 @@ describe Chef::Provider::ContainerService::Runit do
 
   describe "#stop_service" do
     before do
-      @provider.stub(:shell_out!)
+      allow(@provider).to receive(:shell_out!)
     end
 
     it 'should send stop command via sv' do
@@ -201,7 +201,7 @@ describe Chef::Provider::ContainerService::Runit do
 
   describe "#restart_service" do
     before do
-      @provider.stub(:shell_out!)
+      allow(@provider).to receive(:shell_out!)
     end
 
     it 'should send restart command via sv' do
@@ -212,7 +212,7 @@ describe Chef::Provider::ContainerService::Runit do
 
   describe "#reload_service" do
     before do
-      @provider.stub(:shell_out!)
+      allow(@provider).to receive(:shell_out!)
     end
 
     it 'should send reload command via sv' do
@@ -228,7 +228,7 @@ describe Chef::Provider::ContainerService::Runit do
     let(:command) { double("shell_out", stdout: 'run: ok', exitstatus: 0)}
 
     before do
-      @provider.stub(:shell_out).and_return(command)
+      allow(@provider).to receive(:shell_out).and_return(command)
     end
 
     it "should get current status of process" do
@@ -242,7 +242,7 @@ describe Chef::Provider::ContainerService::Runit do
       let(:command) { double("shell_out", stdout: 'error: not ok', exitstatus: 1) }
 
       before do
-        @provider.stub(:shell_out).with(runit_signal("status")).and_return(command)
+        allow(@provider).to receive(:shell_out).with(runit_signal("status")).and_return(command)
       end
 
       it "should return false" do
@@ -255,7 +255,7 @@ describe Chef::Provider::ContainerService::Runit do
       let(:command) { double("shell_out", stdout: 'run: ok', exitstatus: 0) }
 
       before do
-        @provider.stub(:shell_out).with(runit_signal("status")).and_return(command)
+        allow(@provider).to receive(:shell_out).with(runit_signal("status")).and_return(command)
       end
 
       it "should return true" do
@@ -268,7 +268,7 @@ describe Chef::Provider::ContainerService::Runit do
   describe "#enabled?" do
     context "service is enabled" do
       before do
-        File.stub(:exists?).with("/opt/chef/service/foo/down").and_return(false)
+        allow(File).to receive(:exists?).with("/opt/chef/service/foo/down").and_return(false)
       end
 
       it "should return true" do
@@ -279,7 +279,7 @@ describe Chef::Provider::ContainerService::Runit do
 
     context "service is not enabled" do
       before do
-        File.stub(:exists?).with("/opt/chef/service/foo/down").and_return(true)
+        allow(File).to receive(:exists?).with("/opt/chef/service/foo/down").and_return(true)
       end
 
       it "should return true" do
@@ -335,7 +335,7 @@ describe Chef::Provider::ContainerService::Runit do
     let(:staging_dir) { double("staging_dir", recursive: nil, mode: nil) }
 
     before do
-      Chef::Resource::Directory.stub(:new).with("/opt/chef/sv/foo", anything).and_return(staging_dir)
+      allow(Chef::Resource::Directory).to receive(:new).with("/opt/chef/sv/foo", anything).and_return(staging_dir)
     end
 
     it 'should create the /opt/chef/sv/{service} directory' do
@@ -350,7 +350,7 @@ describe Chef::Provider::ContainerService::Runit do
     let(:down_file) { double("down_file", mode: nil, backup: nil) }
 
     before do
-      Chef::Resource::File.stub(:new).with("/opt/chef/sv/foo/down", anything).and_return(down_file)
+      allow(Chef::Resource::File).to receive(:new).with("/opt/chef/sv/foo/down", anything).and_return(down_file)
     end
 
     it 'should create the /opt/chef/sv/{service}/down file' do
@@ -364,8 +364,8 @@ describe Chef::Provider::ContainerService::Runit do
     let(:run_script) { double("run_script", content: nil, mode: nil) }
 
     before do
-      Chef::Resource::File.stub(:new).with("/opt/chef/sv/foo/run", anything).and_return(run_script)
-      @provider.stub(:run_script_content).and_return("go!")
+      allow(Chef::Resource::File).to receive(:new).with("/opt/chef/sv/foo/run", anything).and_return(run_script)
+      allow(@provider).to receive(:run_script_content).and_return("go!")
     end
 
     it 'should create the /opt/chef/sv/{service}/run file' do
@@ -380,7 +380,7 @@ describe Chef::Provider::ContainerService::Runit do
     let(:log_dir) { double("log_dir", recursive: nil, mode: nil) }
 
     before do
-      Chef::Resource::File.stub(:new).with("/var/log/foo", anything)
+      allow(Chef::Resource::File).to receive(:new).with("/var/log/foo", anything)
     end
 
     it 'should create the /var/log/{service} directory' do
@@ -395,7 +395,7 @@ describe Chef::Provider::ContainerService::Runit do
     let(:log_main_dir) { double("log_main_dir", recursive: nil, mode: nil) }
 
     before do
-      Chef::Resource::File.stub(:new).with("/opt/chef/sv/foo/log", anything)
+      allow(Chef::Resource::File).to receive(:new).with("/opt/chef/sv/foo/log", anything)
     end
 
     it 'should create the /var/log/{service} directory' do
@@ -410,8 +410,8 @@ describe Chef::Provider::ContainerService::Runit do
     let(:log_run_script) { double("log_run_script", content: nil, mode: nil) }
 
     before do
-      Chef::Resource::File.stub(:new).with("/opt/chef/sv/foo/log/run", anything).and_return(log_run_script)
-      @provider.stub(:log_run_script_content).and_return("go!")
+      allow(Chef::Resource::File).to receive(:new).with("/opt/chef/sv/foo/log/run", anything).and_return(log_run_script)
+      allow(@provider).to receive(:log_run_script_content).and_return("go!")
     end
 
     it 'should create the /opt/chef/sv/{service}/log/run file' do
@@ -426,7 +426,7 @@ describe Chef::Provider::ContainerService::Runit do
     let(:service_dir_link) { double("service_dir_link", to: nil) }
 
     before do
-      Chef::Resource::Link.stub(:new).with("/opt/chef/service/foo", anything).and_return(service_dir_link)
+      allow(Chef::Resource::Link).to receive(:new).with("/opt/chef/service/foo", anything).and_return(service_dir_link)
     end
 
     it 'creates a symlink between /opt/chef/sv/{service} and /opt/chef/service/{service}' do

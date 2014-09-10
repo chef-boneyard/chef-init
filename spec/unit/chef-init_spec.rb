@@ -57,8 +57,8 @@ describe ChefInit do
 
     context "when .node_name file exists" do
       before do
-        File.stub(:exist?).with("/etc/chef/.node_name").and_return(true)
-        File.stub(:read).with("/etc/chef/.node_name").and_return("docker-demo-build")
+        allow(File).to receive(:exist?).with("/etc/chef/.node_name").and_return(true)
+        allow(File).to receive(:read).with("/etc/chef/.node_name").and_return("docker-demo-build")
       end
 
       it "should return the contents of the file" do
