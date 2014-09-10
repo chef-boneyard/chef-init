@@ -1,6 +1,6 @@
 # Chef Init Changelog
 
-## Unreleased
+## v0.3.2 (Unreleased)
 * [FSE-188] Method for stripping secure credentials resulted in intermediate
 image with those credentials still present. Stripping out those intermediate
 layers is now the responsibility of `chef-init --bootstrap`. Reported by Andrew
