@@ -17,6 +17,7 @@
 
 require 'chef-init/helpers'
 require 'chef-init/log'
+require 'chef-init/process'
 require 'fileutils'
 require 'tmpdir'
 
@@ -42,6 +43,52 @@ module ChefInit
       ChefInit::Log.info("#{@name}: pass")
     end
 
+    # Check whether or not the specified file does or does not exist (based
+    # on the expected value). If it fails, we will print out the specified
+    # error message.
+    #
+    # @param file [String] the name of the file
+    # @param expected_value [TrueClass,FalseClass] whether we expect the file to exist
+    # @param error_msg [String] the message to print if the test fails
+    def test_file(file, expected_value, error_msg)
+      if ::File.exist?(file) == expected_value
+        pass
+      else
+        fail error_msg
+      end
+    end
+
+    # Check whether or not the command returns the expected exit status.
+    #
+    # @param cmd [String] the command to run
+    # @param expected_value [Integer] what exit status we expect
+    # @param error_msg [String] the message to print if the test fails
+    def test_cmd(cmd, expected_value, error_msg)
+      output = system_command(cmd)
+      if output.exitstatus == expected_value
+        pass
+      else
+        fail error_msg
+      end
+    end
+
+    # Runs `ps aux` to look for the existence of a process. Based on the value
+    # of expected_value the test will pass or fail. If it fails, we will print
+    # out the error message.
+    #
+    # @param process [String] the regex string representing the process to look for
+    # @param expected_value [TrueClass,FalseClass] whether the existence of the process
+    #     indicates success or failure
+    # @param error_msg [String] the message to print out if the test fails
+    def test_ps(process, expected_value, error_msg)
+      if ChefInit::Process.running?(process) == expected_value
+        pass
+      else
+        fail error_msg
+        puts output.stdout
+      end
+    end
+
     def self.num_tests_passed
       "#{@@test_count - @@failed_tests.length}/#{@@test_count}"
     end
@@ -56,12 +103,9 @@ module ChefInit
   end
 
   class Verify
-
     include ChefInit::Helpers
 
-    #
     # Run the verification tests
-    #
     def run
       binaries_exist?
       binaries_run?
@@ -70,12 +114,13 @@ module ChefInit
 
       if ChefInit::Test.did_pass?
         ChefInit::Log.info("#{ChefInit::Test.num_tests_passed} tests passed.")
+        exit true
       else
         failed_test_string = ChefInit::Test.failed_tests.each { |t|
           "\t #{t}" }.join("\n")
 
         ChefInit::Log.fatal("Tests failed:\n#{failed_test_string}")
-        exit 1
+        exit false
       end
     end
 
@@ -94,11 +139,7 @@ module ChefInit
 
       files.each do |file|
         file_exists = ChefInit::Test.new("file '#{file}' exists")
-        if File.exists?(file)
-          file_exists.pass
-        else
-          file_exists.fail "#{file} does not exist"
-        end
+        file_exists.test_file(file, true, "#{file} does not exist")
       end
     end
 
@@ -115,14 +156,8 @@ module ChefInit
 
       commands.each do |command|
         command_runs = ChefInit::Test.new("command `#{command}` runs")
-        output = system_command(command)
-        if output.exitstatus == 0
-          command_runs.pass
-        else
-          command_runs.fail "`#{command}` does not exit with 0"
-        end
+        command_runs.test_cmd(command, 0, "`#{command}` does not exit with 0")
       end
-
     end
 
     #
@@ -151,36 +186,22 @@ module ChefInit
         " --config #{tempdir}/zero.rb" \
         " --json-attributes #{tempdir}/good-first-boot.json"
 
-      Process.spawn(chef_init_cmd, out:"#{tempdir}/chef-init-log")
+      chefinit = ChefInit::Process.new(chef_init_cmd)
+      chefinit.launch
 
       # Wait a bit for chef-client to run
-      sleep 20
+      wait_for_ccr_finish
 
       # Does it start the runit process?
       runsvdir_started = ChefInit::Test.new("runsvdir started")
-      output = system_command("ps aux | grep runsvdi[r]")
-      unless output.stdout.empty?
-        runsvdir_started.pass
-      else
-        runsvdir_started.fail "onboot: runsvdir did not start"
-        puts output.stdout
-      end
+      runsvdir_started.test_ps("runsvdi[r]", true, "onboot: runsvdir did not start")
 
       # Do services start?
       enabled_services_started = ChefInit::Test.new("enabled services started")
-      output = system_command("ps aux | grep chef-init-tes[t]")
-      unless output.stdout.empty?
-        enabled_services_started.pass
-      else
-        enabled_services_started.fail "onboot: services did not start"
-        puts output.stdout
-      end
+      enabled_services_started.test_ps("chef-init-tes[t]", true, "onboot: services did not start")
 
       # Cleanup
-      system_command("pkill -TERM -f '#{chef_init_cmd}'")
-
-      # wait for things to cleanup
-      sleep 15
+      chefinit.kill
       cleanup_test_environment
 
       check_for_leftover_supervisor_processes("onboot")
@@ -199,24 +220,19 @@ module ChefInit
       fail_chef_run = ChefInit::Test.new("bootstrap: failing chef-client exit" \
         " codes are honored")
 
-      failing_command = system_command("#{omnibus_bin_dir}/chef-init " \
+      chefinit_cmd = "#{omnibus_bin_dir}/chef-init " \
         '--bootstrap ' \
         "--config #{tempdir}/zero.rb " \
         "--json-attributes #{tempdir}/bad-first-boot.json " \
-        "--log_level #{ChefInit::Log.level}")
+        "--log_level #{ChefInit::Log.level}"
 
-      # Test to make sure that a non-zero exit code was returned
-      if failing_command.exitstatus == 0
-        fail_chef_run.fail "bootstrap: chef-init does not honor failing exit" \
-          " code from chef-client"
-        puts failing_command.stdout
-      else
-        fail_chef_run.pass
-      end
+      fail_chef_run.test_cmd(chefinit_cmd, 0, "bootstrap: chef-init does not " \
+        "honor failing exit code from chef-client")
 
-      # Make sure that there are no leftover supervisor processes
       check_for_leftover_supervisor_processes("failing bootstrap")
 
+      # Cleanup
+      ChefInit::Process.kill(chefinit_cmd)
       cleanup_test_environment
     end
 
@@ -229,23 +245,19 @@ module ChefInit
       pass_chef_run = ChefInit::Test.new("bootstrap: passing chef-client exit" \
         " codes are honored")
 
-      successful_command =system_command("#{omnibus_bin_dir}/chef-init " \
+      chefinit_cmd = "#{omnibus_bin_dir}/chef-init " \
         '--bootstrap ' \
         "--config #{tempdir}/zero.rb " \
         "--json-attributes #{tempdir}/good-first-boot.json " \
-        "--log_level warn")
+        "--log_level warn"
 
-      if successful_command.exitstatus == 0
-        pass_chef_run.pass
-      else
-        pass_chef_run.fail "bootstrap: chef-init does not honor passing exit" \
-          " code from chef-client"
-        puts successful_command.stdout
-      end
+      pass_chef_run.test_cmd(chefinit_cmd, 0, "bootstrap: chef-init does not honor passing exit" \
+        " code from chef-client")
 
-      # Make sure that there are no leftover supervisor processes
       check_for_leftover_supervisor_processes("successful bootstrap")
 
+      # Cleanup
+      ChefInit::Process.kill(chefinit_cmd)
       cleanup_test_environment
     end
 
@@ -257,29 +269,23 @@ module ChefInit
     # Make sure that no supervisor processes are left over after exit
     #
     def check_for_leftover_supervisor_processes(tag)
-      # wait for a few seconds to let things close down
-      sleep 5
+      runsvdir_check = ChefInit::Test.new("#{tag} - runsvdir process is cleaned up")
+      runsvdir_check.test_ps("bin\/runsvdi[r]", true, "#{tag} - runsvdir is still running")
 
-      leftover_processes = ChefInit::Test.new("#{tag} - supervisor processes" \
-        " are cleaned up")
+      runsv_check = ChefInit::Test.new("#{tag} - runsv process is cleaned up")
+      runsv_check.test_ps("runs[v] chef\-init", true, "#{tag} - runsv is still running")
 
-      # Check to runsvdir
-      runsvdir_check = system_command("ps aux | grep bin\/runsvdi[r]")
-      runsv_check = system_command("ps aux | grep runs[v] chef\-init")
-      test_tool_check = system_command("ps aux | grep chef-init-tes[t]")
+      test_tool_check = ChefInit::Test.new("#{tag} - chef-init-test process is cleaned up")
+      test_tool_check.test_ps("chef-init-tes[t]", true, "#{tag} - chef-init-test process is still running")
+    end
 
-      case
-      when !runsvdir_check.stdout.empty?
-        leftover_processes.fail "#{tag} - runsvdir is still running"
-        puts runsvdir_check.stdout
-      when !runsv_check.stdout.empty?
-        leftover_processes.fail "#{tag} - runsv is still running"
-        puts runsv_check.stdout
-      when !test_tool_check.stdout.empty?
-        leftover_processes.fail "#{tag} - chef-init-test is still running"
-        puts test_tool_check.stdout
-      else
-        leftover_processes.pass
+    def wait_for_ccr_finish
+      tries = 0
+      while tries < 3
+        if ChefInit::Process.running?("chef-clien[t]")
+          tries += 1
+          sleep tries*5
+        end
       end
     end
 

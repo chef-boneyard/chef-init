@@ -18,6 +18,7 @@
 require 'chef-init/version'
 require 'chef-init/helpers'
 require 'chef-init/verify'
+require 'chef-init/process'
 require 'mixlib/cli'
 
 module ChefInit
@@ -88,8 +89,6 @@ module ChefInit
     def initialize(argv, max_retries=5)
       @argv = argv
       @max_retries = max_retries
-      @terminated_child_processes = {}
-      @monitor_child_processes = []
       super()
     end
 
@@ -167,22 +166,22 @@ module ChefInit
       end
 
       ChefInit::Log.info("Starting Supervisor...")
-      @supervisor = launch_supervisor
-      @monitor_child_processes << @supervisor
+      @supervisor = ChefInit::Process.new(supervisor_launch_command)
+      @supervisor.launch
       ChefInit::Log.info("Supervisor pid: #{@supervisor}")
 
       ChefInit::Log.debug("Waiting for Supervisor to start...")
       wait_for_supervisor
 
       ChefInit::Log.info("Starting chef-client run...")
-      @chef_client = run_chef_client
-      @monitor_child_processes << @chef_client
-      waitpid_reap_other_children(@chef_client)
+      @chef_client = ChefInit::Process.new(chef_client_command)
+      @chef_client.launch
+      @chef_client.wait
 
       ChefInit::Log.debug("Deleting validation key")
       delete_validation_key
 
-      waitpid_reap_other_children(@supervisor)
+      @supervisor.wait
 
       exit true
     end
@@ -192,45 +191,29 @@ module ChefInit
     #
     def launch_bootstrap
       ChefInit::Log.info("Starting Supervisor...")
-      @supervisor = launch_supervisor
-      ChefInit::Log.info("Supervisor pid: #{@supervisor}")
+      @supervisor = ChefInit::Process.new(supervisor_launch_command)
+      @supervisor.launch
+      ChefInit::Log.info("Supervisor pid: #{@supervisor.pid}")
 
       ChefInit::Log.debug("Waiting for Supervisor to start...")
       wait_for_supervisor
 
       ChefInit::Log.info("Starting chef-client run...")
-      @chef_client = run_chef_client
-      @monitor_child_processes << @chef_client
-      chef_client_exitstatus = waitpid_reap_other_children(@chef_client) == 0
+      @chef_client = ChefInit::Process.new(chef_client_command)
+      @chef_client.launch
+      chef_client_exitstatus = @chef_client.wait == 0
 
-      ChefInit::Log.info("Deleting client key...")
+      ChefInit::Log.debug("Deleting client key...")
       delete_client_key
       ChefInit::Log.debug("Removing node name file...")
       delete_node_name_file
-      ChefInit::Log.info("Emptying secure folder...")
+      ChefInit::Log.debug("Emptying secure folder...")
       empty_secure_directory if config[:remove_secure]
 
       shutdown_supervisor
+      @supervisor.wait
 
       exit chef_client_exitstatus
-    end
-
-    #
-    # Launch the supervisor
-    #
-    def launch_supervisor
-      fork do
-        exec({"PATH" => path}, supervisor_launch_command)
-      end
-    end
-
-    #
-    # Run the chef-client
-    #
-    def run_chef_client
-      fork do
-        exec({"PATH" => path}, chef_client_command)
-      end
     end
 
     def shutdown_supervisor
@@ -241,15 +224,11 @@ module ChefInit
       system_command("#{omnibus_embedded_bin_dir}/sv exit #{omnibus_root}/service/*")
 
       ChefInit::Log.debug("Kill the primary supervisor")
-      Process.kill("HUP", @supervisor)
-      sleep 3
-      Process.kill("TERM", @supervisor)
-      sleep 3
-      Process.kill("KILL", @supervisor)
+      @supervisor.kill
 
       ChefInit::Log.debug("Kill the runsv processes")
       get_all_services.each do |die_daemon_die|
-        system_command("pkill -KILL -f 'runsv #{die_daemon_die}'")
+        ChefInit::Process.kill("runsv #{die_daemon_die}")
       end
 
       ChefInit::Log.debug("Shutdown complete...")
@@ -274,37 +253,18 @@ module ChefInit
 
     private
 
-    # Waits for the child process with the given PID, while at the same time
-    # reaping any other child processes that have exited (e.g. adopted child
-    # processes that have terminated).
-    # (code from https://github.com/phusion/baseimage-docker translated from python)
-    def waitpid_reap_other_children(pid)
-      if @terminated_child_processes.include?(pid)
-        # A previous call to waitpid_reap_other_children(),
-        # with an argument not equal to the current argument,
-        # already waited for this process. Return the status
-        # that was obtained back then.
-        return @terminated_child_processes.delete(pid)
-      end
-      done = false
-      status = nil
-      until done
-        begin
-          this_pid, status = Process.wait2(-1, 0)
-          if this_pid == pid
-            done = true
-          elsif @monitor_child_processes.include?(pid)
-            @terminated_child_processes[this_pid] = status
-          end
-        rescue Errno::ECHILD, Errno::ESRCH
-          return
-        end
-      end
-      status
-    end
-
     def wait_for_supervisor
-      sleep 5
+      max_wait = 10
+      wait = 0
+      running = false
+      begin
+        if @supervisor.running?
+          running = true
+        else
+          sleep 2
+          wait += 1
+        end
+      end until running || max_wait == wait
     end
 
     def supervisor_launch_command
