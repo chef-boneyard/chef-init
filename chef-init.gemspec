@@ -13,7 +13,9 @@ Gem::Specification.new do |s|
   s.homepage      = "http://getchef.com"
   s.license       = "Apache 2.0"
 
-  s.files         = `git ls-files -z`.split("\x0")
+  s.files = %w(Rakefile README.md CONTRIBUTING.md) + Dir.glob("{lib,spec}/**/*", File::FNM_DOTMATCH).reject do |f|
+    File.directory?(f)
+  end
   s.executables   = s.files.grep(%r{^bin/}) { |f| File.basename(f) }
   s.test_files    = s.files.grep(%r{^(test|spec|features)/})
   s.require_paths = ["lib"]
