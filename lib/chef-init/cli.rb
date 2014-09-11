@@ -256,15 +256,10 @@ module ChefInit
     def wait_for_supervisor
       max_wait = 10
       wait = 0
-      running = false
-      begin
-        if @supervisor.running?
-          running = true
-        else
-          sleep 2
-          wait += 1
-        end
-      end until running || max_wait == wait
+      until @supervisor.running? || max_wait == wait
+        sleep 2
+        wait += 1
+      end
     end
 
     def supervisor_launch_command

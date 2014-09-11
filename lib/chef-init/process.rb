@@ -28,7 +28,7 @@ module ChefInit
 
     def self.find_by_name(name)
       Proctable.ps do |proc|
-        if proc.cmdline =~ process_name
+        if proc.cmdline =~ name
           return proc.pid
         end
       end
@@ -41,7 +41,7 @@ module ChefInit
       elsif id.is_a? String
         Proctable.ps(get_pid(id)).nil?
       else
-        false
+        raise InvalidProcessID
       end
     end
 
@@ -119,5 +119,10 @@ module ChefInit
       end
     end
 
+    class InvalidProcessID < RuntimeError
+      def initialize
+        super("The process identified your provided is not valid.")
+      end
+    end
   end
 end
