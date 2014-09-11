@@ -29,6 +29,7 @@ class Chef
       class Runit < Chef::Provider::ContainerService
 
         attr_reader :command
+        attr_reader :log_type # stdout, file
 
         def initialize(name, run_context=nil)
           super
@@ -40,7 +41,8 @@ class Chef
           @log_main_dir = nil
           @log_run_script = nil
           @service_dir_link = nil
-          @command = node["container_service"][new_resource.service_name]["command"]
+          @command = node['container_service'][new_resource.service_name]['command']
+          @log_type = node['container_service'][new_resource.service_name]['log_type'].to_sym || :stdout
         end
 
         def load_current_resource
@@ -71,8 +73,10 @@ class Chef
           Chef::Log.debug("Creating run script for #{new_resource.service_name}")
           run_script.run_action(:create)
 
-          Chef::Log.debug("Creating /var/log directory for #{new_resource.service_name}")
-          log_dir.run_action(:create)
+          if @log_type.eql?(:file)
+            Chef::Log.debug("Creating /var/log directory for #{new_resource.service_name}")
+            log_dir.run_action(:create)
+          end
 
           Chef::Log.debug("Creating log dir for #{new_resource.service_name}")
           log_main_dir.run_action(:create)
@@ -145,15 +149,15 @@ class Chef
         end
 
         def service_dir_name
-          ::File.join(omnibus_root, "service", new_resource.service_name)
+          ::File.join(omnibus_root, 'service', new_resource.service_name)
         end
 
         def staging_dir_name
-          ::File.join(omnibus_root, "sv", new_resource.service_name)
+          ::File.join(omnibus_root, 'sv', new_resource.service_name)
         end
 
         def sv_bin
-          ::File.join(omnibus_embedded_bin_dir, "sv")
+          ::File.join(omnibus_embedded_bin_dir, 'sv')
         end
 
         ##
@@ -166,8 +170,14 @@ exec #{@command} 2>&1"
         end
 
         def log_run_script_content
-          "#!/bin/sh
-exec svlogd -tt /var/log/#{new_resource.service_name}"
+          content = "#!/bin/sh\n"
+          case @log_type
+          when :stdout
+            content += "exec chef-init-logger --service-name #{new_resource.service_name}"
+          when :file
+            content += "exec svlogd -tt /var/log/#{new_resource.service_name}"
+          end
+          content
         end
 
         ##
@@ -183,7 +193,7 @@ exec svlogd -tt /var/log/#{new_resource.service_name}"
 
         def service_dir
           return @service_dir unless @service_dir.nil?
-          @service_dir = Chef::Resource::Directory.new(::File.join(omnibus_root, "service"), run_context)
+          @service_dir = Chef::Resource::Directory.new(::File.join(omnibus_root, 'service'), run_context)
           @service_dir.recursive(true)
           @service_dir.mode(00755)
           @service_dir
