@@ -13,7 +13,9 @@ Gem::Specification.new do |s|
   s.homepage      = "http://getchef.com"
   s.license       = "Apache 2.0"
 
-  s.files         = `git ls-files -z`.split("\x0")
+  s.files = %w(Rakefile README.md CONTRIBUTING.md) + Dir.glob("{lib,spec}/**/*", File::FNM_DOTMATCH).reject do |f|
+    File.directory?(f)
+  end
   s.executables   = s.files.grep(%r{^bin/}) { |f| File.basename(f) }
   s.test_files    = s.files.grep(%r{^(test|spec|features)/})
   s.require_paths = ["lib"]
@@ -23,6 +25,7 @@ Gem::Specification.new do |s|
   s.add_dependency "mixlib-log", "~> 1.1"
   s.add_dependency "chef", "= 11.12.8"
   s.add_dependency "docker-api", "~> 1.11.1"
+  s.add_dependency 'sys-proctable', '~> 0.9.4'
 
   s.add_development_dependency "rake", "~> 10.1.0"
   s.add_development_dependency "rspec", "~> 2.14.0"
