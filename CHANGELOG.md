@@ -5,6 +5,9 @@
 image with those credentials still present. Stripping out those intermediate
 layers is now the responsibility of `chef-init --bootstrap`. Reported by Andrew
 Hsu.
+* [FSE-193] Add the option for where log info is sent for process. You can either
+write them to the standard /var/log file using `file` or print them to STDOUT using
+`stdout`
 
 ## v0.3.1 (2014-08-13)
 * Fixed bug when load_current_resource does not pass in run_context to service
