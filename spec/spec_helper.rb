@@ -29,3 +29,11 @@ $:.unshift(File.join(File.dirname(__FILE__), "..", "lib"))
 $:.unshift(File.expand_path("../lib", __FILE__))
 $:.unshift(File.dirname(__FILE__))
 
+RSpec.configure do |c|
+  c.expect_with :rspec do |config|
+    config.syntax = [:should, :expect]
+  end
+  c.filter_run :focus => true
+  c.run_all_when_everything_filtered = true
+  c.treat_symbols_as_metadata_keys_with_true_values = true
+end
