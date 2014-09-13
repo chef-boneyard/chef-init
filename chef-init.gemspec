@@ -13,7 +13,7 @@ Gem::Specification.new do |s|
   s.homepage      = "http://getchef.com"
   s.license       = "Apache 2.0"
 
-  s.files = %w(Rakefile README.md CONTRIBUTING.md) + Dir.glob("{lib,spec}/**/*", File::FNM_DOTMATCH).reject do |f|
+  s.files = %w(Rakefile README.md CONTRIBUTING.md) + Dir.glob("{bin,data,lib,spec}/**/*", File::FNM_DOTMATCH).reject do |f|
     File.directory?(f)
   end
   s.executables   = s.files.grep(%r{^bin/}) { |f| File.basename(f) }
