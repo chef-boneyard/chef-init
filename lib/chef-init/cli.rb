@@ -168,7 +168,7 @@ module ChefInit
       ChefInit::Log.info("Starting Supervisor...")
       @supervisor = ChefInit::Process.new(supervisor_launch_command)
       @supervisor.launch
-      ChefInit::Log.info("Supervisor pid: #{@supervisor}")
+      ChefInit::Log.info("Supervisor pid: #{@supervisor.pid}")
 
       ChefInit::Log.debug("Waiting for Supervisor to start...")
       wait_for_supervisor

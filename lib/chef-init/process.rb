@@ -20,28 +20,35 @@ require 'chef-init/helpers'
 
 module ChefInit
   class Process
-    include Sys
     include ChefInit::Helpers
 
     @@terminated_child_processes = {}
     @@monitor_child_processes = []
 
     def self.find_by_name(name)
-      Proctable.ps do |proc|
-        if proc.cmdline =~ name
-          return proc.pid
+      ::Sys::ProcTable.ps do |proc|
+        unless proc.cmdline.match(name).nil?
+          return proc
         end
       end
-      raise NotFound
+      raise ChefInit::Exceptions::ProcessNotFound, "The process `#{name}` could not be found in the process table."
     end
 
-    def self.running?(pid)
-      if id.is_a? Integer
-        Proctable.ps(id).nil?
+    def self.get(id)
+      if id.is_a? Fixnum
+        ::Sys::ProcTable.ps(id)
       elsif id.is_a? String
-        Proctable.ps(get_pid(id)).nil?
+        self.find_by_name(id)
       else
-        raise InvalidProcessID
+        raise ChefInit::Exceptions::InvalidProcessID, "The process identifer `#{id}` is invalid. Must be type Fixnum or String."
+      end
+    end
+
+    def self.running?(id)
+      begin
+        self.get(id).nil?
+      rescue ChefInit::Exceptions::ProcessNotFound
+        false
       end
     end
 
@@ -74,20 +81,23 @@ module ChefInit
       status
     end
 
-    def self.kill(pid)
+    def self.kill(id)
+      pid = self.get(id).pid
       ::Process.kill('HUP', pid)
       sleep 3
       ::Process.kill('TERM', pid)
       sleep 3
       ::Process.kill('KILL', pid)
-      self.class.wait(pid)
+      self.wait(pid)
+    rescue ChefInit::Exceptions::ProcessNotFound
+      ChefInit::Log.debug("Process `#{id}` cannot be killed because it was not found in the process table.")
     end
 
     attr_reader :pid
     attr_reader :command
     attr_reader :exitstatus
 
-    def initialize(command, path=Helpers.path)
+    def initialize(command)
       @command = command
       @pid = nil
       @path = path
@@ -111,18 +121,6 @@ module ChefInit
 
     def running?
       self.class.running?(@pid)
-    end
-
-    class NotFound < RuntimeError
-      def initialize
-        super("The process you specified could not be found.")
-      end
-    end
-
-    class InvalidProcessID < RuntimeError
-      def initialize
-        super("The process identified your provided is not valid.")
-      end
     end
   end
 end
