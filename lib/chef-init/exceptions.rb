@@ -18,6 +18,9 @@
 module ChefInit
   module Exceptions
 
+    class ProcessNotFound < RuntimeError; end
+    class InvalidProcessID < RuntimeError; end
+
     class ProcessSupervisorNotRunning < RuntimeError
       def initialize
         super("Specified process supervisor did not start in the given timeframe.")
@@ -37,4 +40,3 @@ module ChefInit
     end
   end
 end
-
