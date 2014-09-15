@@ -69,7 +69,10 @@ module ChefInit
         pass
       else
         fail error_msg
-        ChefInit::Log.info("Expected `#{expected_value}` but received `#{output.exitstatus}`")
+
+        ChefInit::Log.error("Expected `#{expected_value}` but received `#{output.exitstatus}`")
+        ChefInit::Log.error("====== Command Output ======")
+        puts output.stdout
       end
     end
 
