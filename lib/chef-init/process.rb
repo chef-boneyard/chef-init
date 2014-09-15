@@ -83,11 +83,7 @@ module ChefInit
 
     def self.kill(id)
       pid = self.get(id).pid
-      ::Process.kill('HUP', pid)
-      sleep 3
       ::Process.kill('TERM', pid)
-      sleep 3
-      ::Process.kill('KILL', pid)
       self.wait(pid)
     rescue ChefInit::Exceptions::ProcessNotFound
       ChefInit::Log.debug("Process `#{id}` cannot be killed because it was not found in the process table.")
