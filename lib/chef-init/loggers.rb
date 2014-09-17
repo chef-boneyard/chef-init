@@ -15,10 +15,27 @@
 # limitations under the License.
 #
 
-require 'mixlib/log'
+require 'chef-init/loggers/stdout'
 
 module ChefInit
-  class Log
-    extend Mixlib::Log
+  #
+  # This is the base class for logging implementations called by ChefInit::Logger.
+  #
+  class Loggers
+
+    def initialize
+      # Do nothing
+    end
+
+    #
+    # Write the log line to the destination
+    #
+    # @param [String] line
+    #   The line of text to write to the destination
+    #
+    def write(line)
+      raise ChefInit::Exceptions::LoggerNotImplemented, "#{self.to_s} did not " \
+        'implement a method to write to the destination.'
+    end
   end
 end

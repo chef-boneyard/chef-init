@@ -16,29 +16,21 @@
 #
 
 require 'spec_helper'
-require 'chef-init/log'
+require 'chef-init/loggers/stdout'
 
-describe 'ChefInit::Log::Reader' do
-  let(:pipe) { IO.pipe }
+describe 'ChefInit::Loggers::Stdout' do
   let(:stdout_io) { StringIO.new }
 
-  subject(:reader) do
-    ChefInit::Log::Reader.new('/opt/chef/logs').tap do |c|
-      allow(c).to receive(:open_pipe).and_return(pipe[0])
-      allow(c).to receive(:output).and_return(stdout_io)
+  subject(:stdout_logger) do
+    ChefInit::Loggers::Stdout.new.tap do |c|
+      allow(c).to receive(:stdout).and_return(stdout_io)
     end
   end
 
-  it 'reads from a log pipe and prints to STDOUT' do
-    reader.run
-    pipe[1].puts('[service1] test line 1')
-    pipe[1].flush
-    pipe[1].puts('[service1] test line 2')
-    pipe[1].flush
-    pipe[1].puts('[service2] test line 1')
-    pipe[1].flush
-    sleep 0.5
-    expect(stdout_io.string).to eql("[service1] test line 1\n[service1] test line 2\n[service2] test line 1\n")
-    reader.kill
+  describe '#write' do
+    it 'writes output to stdout' do
+      stdout_logger.write('test log line')
+      expect(stdout_io.string).to eql("test log line\n")
+    end
   end
 end

@@ -30,7 +30,6 @@ module ChefInit
     attr_reader :max_retries
     attr_reader :supervisor
     attr_reader :chef_client
-    attr_reader :log_reader
 
     option :config_file,
       :short        => "-c CONFIG",
@@ -199,9 +198,6 @@ module ChefInit
       ChefInit::Log.debug("Waiting for Supervisor to start...")
       wait_for_supervisor
 
-      ChefInit::Log.debug('Starting the logging pipeline')
-      launch_logger
-
       ChefInit::Log.info("Starting chef-client run...")
       @chef_client = ChefInit::Process.new(chef_client_command)
       @chef_client.launch
@@ -220,25 +216,8 @@ module ChefInit
       exit chef_client_exitstatus
     end
 
-    # Listen to the Log pipe and print out messages
-    #
-    # @return [Thread] the thread managing the stdout logging
-    def launch_logger
-      ChefInit::Log.debug("Creating log pipe at #{log_pipe}")
-      @log_reader = ChefInit::Log::Reader.new(log_pipe)
-      @log_reader.run
-    end
-
-    # Close the log pipe
-    def shutdown_logger
-      @log_reader.kill
-    end
-
     def shutdown_supervisor
       ChefInit::Log.debug("Waiting for services to stop...")
-
-      ChefInit::Log.debug('Shutdown the logging pipeline')
-      shutdown_logger
 
       ChefInit::Log.debug("Exit all the services")
       system_command("#{omnibus_embedded_bin_dir}/sv stop #{omnibus_root}/service/*")

@@ -41,8 +41,10 @@ class Chef
           @log_main_dir = nil
           @log_run_script = nil
           @service_dir_link = nil
-          @command = node['container_service'][new_resource.service_name]['command']
-          @log_type = node['container_service'][new_resource.service_name]['log_type'].to_sym || :stdout
+
+          options = node['container_service'][new_resource.service_name]
+          @command = options['command']
+          @log_type = options['log_type'].nil? ? :stdout : options['log_type'].to_sym
         end
 
         def load_current_resource
@@ -173,7 +175,7 @@ exec #{@command} 2>&1"
           content = "#!/bin/sh\n"
           case @log_type
           when :stdout
-            content += "exec chef-init-logger --service-name #{new_resource.service_name}"
+            content += "exec chef-init-logger --service-name #{new_resource.service_name} --log-destination stdout"
           when :file
             content += "exec svlogd -tt /var/log/#{new_resource.service_name}"
           end

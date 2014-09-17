@@ -348,7 +348,7 @@ describe Chef::Provider::ContainerService::Runit do
     end
 
     context 'when log_type is set to the default :stdout' do
-      let(:expected_content) { "#!/bin/sh\nexec chef-init-logger --service-name foo" }
+      let(:expected_content) { "#!/bin/sh\nexec chef-init-logger --service-name foo --log-destination stdout" }
       it 'returns a string with the run script content' do
         expect(provider.instance_eval { log_run_script_content }).to eql(expected_content)
       end
