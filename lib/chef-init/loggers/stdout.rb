@@ -1,5 +1,5 @@
 #
-# Copyright:: Copyright (c) 2014 Chef Software Inc.
+# Copyright:: Copyright (c) 2012-2014 Chef Software, Inc.
 # License:: Apache License, Version 2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,29 +16,35 @@
 #
 
 module ChefInit
-  module Exceptions
+  class Loggers
+    #
+    # This is an implementation of a Logger that writes to STDOUT.
+    #
+    class Stdout < ChefInit::Loggers
 
-    class ProcessNotFound < RuntimeError; end
-    class InvalidProcessID < RuntimeError; end
-
-    class InvalidLogDestination < RuntimeError; end
-    class LoggerNotImplemented < RuntimeError; end
-
-    class ProcessSupervisorNotRunning < RuntimeError
       def initialize
-        super("Specified process supervisor did not start in the given timeframe.")
+        super()
       end
-    end
 
-    class OmnibusInstallNotFound < RuntimeError
-      def initialize
-        super("Can not find omnibus installation directory for Chef.")
+      #
+      # Returns the file descriptor for STDOUT
+      #
+      # @return [Constant]
+      #
+      def stdout
+        STDOUT
       end
-    end
 
-    class ChefClientRunFailure < RuntimeError
-      def initialize
-        super("Chef Client run failed.")
+      #
+      # Writes the log line to STDOUT
+      #
+      # @param [String] line
+      #   The line of text to send to STDOUT
+      #
+      def write(line)
+        stdout.sync = true
+        stdout.puts line
+        stdout.flush
       end
     end
   end

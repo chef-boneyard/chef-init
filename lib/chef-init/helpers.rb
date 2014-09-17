@@ -75,5 +75,12 @@ module ChefInit
     def path
       "#{omnibus_root}/bin:#{omnibus_root}/embedded/bin:/usr/local/bin:/usr/local/sbin:/bin:/sbin:/usr/bin:/usr/sbin"
     end
+
+    # Returns the FIFO pipe that will be used for communication with chef-init main.
+    #
+    # @return [String] the path to the FIFO pipe
+    def log_pipe
+      '/opt/chef/logs'
+    end
   end
 end

@@ -14,26 +14,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-require 'simplecov'
 
-SimpleCov.start do
-  add_filter '/spec/'
-  add_group 'ChefInit', 'lib/chef-init/'
-  add_group 'Chef', 'lib/chef/'
-end
+require 'chef-init/loggers/stdout'
 
-require 'chef'
-require 'chef/recipe'
+module ChefInit
+  #
+  # This is the base class for logging implementations called by ChefInit::Logger.
+  #
+  class Loggers
 
-$:.unshift(File.join(File.dirname(__FILE__), "..", "lib"))
-$:.unshift(File.expand_path("../lib", __FILE__))
-$:.unshift(File.dirname(__FILE__))
+    def initialize
+      # Do nothing
+    end
 
-RSpec.configure do |c|
-  c.expect_with :rspec do |config|
-    config.syntax = [:should, :expect]
+    #
+    # Write the log line to the destination
+    #
+    # @param [String] line
+    #   The line of text to write to the destination
+    #
+    def write(line)
+      raise ChefInit::Exceptions::LoggerNotImplemented, "#{self.to_s} did not " \
+        'implement a method to write to the destination.'
+    end
   end
-  c.filter_run :focus => true
-  c.run_all_when_everything_filtered = true
-  c.treat_symbols_as_metadata_keys_with_true_values = true
 end

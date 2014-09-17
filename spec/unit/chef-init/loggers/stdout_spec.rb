@@ -14,26 +14,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-require 'simplecov'
 
-SimpleCov.start do
-  add_filter '/spec/'
-  add_group 'ChefInit', 'lib/chef-init/'
-  add_group 'Chef', 'lib/chef/'
-end
+require 'spec_helper'
+require 'chef-init/loggers/stdout'
 
-require 'chef'
-require 'chef/recipe'
+describe 'ChefInit::Loggers::Stdout' do
+  let(:stdout_io) { StringIO.new }
 
-$:.unshift(File.join(File.dirname(__FILE__), "..", "lib"))
-$:.unshift(File.expand_path("../lib", __FILE__))
-$:.unshift(File.dirname(__FILE__))
-
-RSpec.configure do |c|
-  c.expect_with :rspec do |config|
-    config.syntax = [:should, :expect]
+  subject(:stdout_logger) do
+    ChefInit::Loggers::Stdout.new.tap do |c|
+      allow(c).to receive(:stdout).and_return(stdout_io)
+    end
   end
-  c.filter_run :focus => true
-  c.run_all_when_everything_filtered = true
-  c.treat_symbols_as_metadata_keys_with_true_values = true
+
+  describe '#write' do
+    it 'writes output to stdout' do
+      stdout_logger.write('test log line')
+      expect(stdout_io.string).to eql("test log line\n")
+    end
+  end
 end
