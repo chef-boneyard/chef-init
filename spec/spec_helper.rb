@@ -14,13 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-require 'simplecov'
-
-SimpleCov.start do
-  add_filter '/spec/'
-  add_group 'ChefInit', 'lib/chef-init/'
-  add_group 'Chef', 'lib/chef/'
-end
 
 require 'chef'
 require 'chef/recipe'

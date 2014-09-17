@@ -29,5 +29,4 @@ Gem::Specification.new do |s|
   s.add_development_dependency "rspec-core", "~> 2.14.0"
   s.add_development_dependency "rspec-expectations", "~> 2.14.0"
   s.add_development_dependency "rspec-mocks", "~> 2.14.0"
-  s.add_development_dependency "simplecov", "~> 0.7.1"
 end
