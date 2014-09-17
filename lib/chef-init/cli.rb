@@ -18,7 +18,7 @@
 require 'chef-init/version'
 require 'chef-init/helpers'
 require 'chef-init/verify'
-require 'chef-init/process'
+require 'childprocess'
 require 'mixlib/cli'
 
 module ChefInit
@@ -265,42 +265,30 @@ module ChefInit
       end
 
       ChefInit::Log.info("Starting Supervisor...")
-      @supervisor = ChefInit::Process.new(supervisor_launch_command)
-      @supervisor.launch
-      ChefInit::Log.info("Supervisor pid: #{@supervisor.pid}")
-
-      ChefInit::Log.debug("Waiting for Supervisor to start...")
-      wait_for_supervisor
+      launch_supervisor
 
       ChefInit::Log.info("Starting chef-client run...")
-      @chef_client = ChefInit::Process.new(chef_client_command)
-      @chef_client.launch
-      @chef_client.wait
+      run_chef_client
 
-      ChefInit::Log.debug("Deleting validation key")
+      ChefInit::Log.info("Deleting validation key")
       delete_validation_key
 
-      @supervisor.wait
+      wait_for_supervisor
 
       exit true
     end
 
-    ##
-    # Launch bootstrap
+    #
+    # Launch the process supervisor and execute a chef client run. Once
+    # the chef client run has completed, exit the main process with the
+    # exit status of the chef client run.
     #
     def launch_bootstrap
       ChefInit::Log.info("Starting Supervisor...")
-      @supervisor = ChefInit::Process.new(supervisor_launch_command)
-      @supervisor.launch
-      ChefInit::Log.info("Supervisor pid: #{@supervisor.pid}")
-
-      ChefInit::Log.debug("Waiting for Supervisor to start...")
-      wait_for_supervisor
+      launch_supervisor
 
       ChefInit::Log.info("Starting chef-client run...")
-      @chef_client = ChefInit::Process.new(chef_client_command)
-      @chef_client.launch
-      chef_client_exitstatus = @chef_client.wait == 0
+      ccr_exit_code = run_chef_client
 
       ChefInit::Log.debug("Deleting client key...")
       delete_client_key
@@ -310,9 +298,41 @@ module ChefInit
       empty_secure_directory if config[:remove_secure]
 
       shutdown_supervisor
-      @supervisor.wait
 
-      exit chef_client_exitstatus
+      exit ccr_exit_code
+    end
+
+    #
+    # Creates and returns a ChildProcess object for the Supervisor
+    #
+    # @return [ChildProcess]
+    #
+    def launch_supervisor
+      process = ::ChildProcess.build(supervisor_launch_command)
+      process.io.inherit!
+      process.leader = true
+      process.start
+      process
+    end
+
+    #
+    # Returns the command to use to launch the process supervisor.
+    #
+    # @return [String]
+    #
+    def supervisor_launch_command
+      [
+        "#{omnibus_embedded_bin_dir}/runsvdir",
+        "-P", "#{omnibus_root}/service",
+        "'log: #{ '.' * 395}'"
+      ]
+    end
+
+    #
+    # Wait for the Supervisor to exit
+    #
+    def wait_for_supervisor
+      @supervisor.wait
     end
 
     #
@@ -327,14 +347,17 @@ module ChefInit
       system_command("#{omnibus_embedded_bin_dir}/sv exit #{omnibus_root}/service/*")
 
       ChefInit::Log.debug("Kill the primary supervisor")
-      @supervisor.kill
-
-      ChefInit::Log.debug("Kill the runsv processes")
-      get_all_services.each do |die_daemon_die|
-        ChefInit::Process.kill("runsv #{die_daemon_die}")
-      end
+      @supervisor.stop
 
       ChefInit::Log.debug("Shutdown complete...")
+    end
+
+    #
+    # Run the chef-client
+    #
+    def run_chef_client
+      ccr = system_command(chef_client_command)
+      ccr.exitstatus
     end
 
     #
@@ -345,7 +368,6 @@ module ChefInit
     # @return [String]
     #
     def chef_client_command
-      command = ["chef-client"]
       command = ['chef-client']
       command << "-c #{config[:config_file]}"
       command << "-j #{config[:json_attribs]}"
@@ -360,28 +382,6 @@ module ChefInit
       end
 
       command.join(' ')
-    end
-    
-    #
-    # Wait for the supervisor to show up in the process table. After the
-    # specified number of attempts, just give up and return.
-    #
-    def wait_for_supervisor
-      max_wait = 10
-      wait = 0
-      until @supervisor.running? || max_wait == wait
-        sleep 2
-        wait += 1
-      end
-    end
-
-    #
-    # Returns the command to use to launch the process supervisor.
-    #
-    # @return [String]
-    #
-    def supervisor_launch_command
-      "#{omnibus_embedded_bin_dir}/runsvdir -P #{omnibus_root}/service 'log: #{ '.' * 395}'"
     end
 
     #

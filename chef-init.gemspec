@@ -22,7 +22,7 @@ Gem::Specification.new do |s|
 
   s.add_dependency "chef", ">= 11.12.8"
   s.add_dependency "docker-api", "~> 1.11.1"
-  s.add_dependency 'sys-proctable', '~> 0.9.4'
+  s.add_dependency 'childprocess', '~> 0.5.3'
 
   s.add_development_dependency "rake", "~> 10.1.0"
   s.add_development_dependency "rspec", "~> 2.14.0"
