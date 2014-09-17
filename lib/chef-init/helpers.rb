@@ -26,59 +26,118 @@ module ChefInit
     #
     # Runs given commands using mixlib-shellout
     #
+    # See the Mixlib::Shellout documentation for parameters.
+    #
     def system_command(*command_args)
       cmd = Mixlib::ShellOut.new(*command_args)
       cmd.run_command
       cmd
     end
 
+    #
+    # Prints the given message to STDERR
+    #
+    # @param [String] message
+    #   The message to print to STDERR
+    #
     def err(message)
       stderr.print("#{message}\n")
     end
 
+    #
+    # Prints the given message to STDOUT
+    #
+    # @param [String] message
+    #   The message to print to STDOUT
+    #
     def msg(message)
       stdout.print("#{message}\n")
     end
 
+    #
+    # A class-specified reference to STDOUT. This is done
+    # primarily to make STDOUT material easy to capture for
+    # testing.
+    #
     def stdout
       $stdout
     end
 
+    #
+    # A class-specified reference to STDERR. This is done
+    # primarily to make STDERR material easy to capture for
+    # testing.
+    #
     def stderr
       $stderr
     end
 
+    #
+    # A wrapper around the Kernel exit method. This is done
+    # primarily to make exit commands easier to capture for
+    # testing.
+    #
     def exit(n)
       Kernel.exit(n)
     end
 
     #
-    # Locates the omnibus directories
+    # Returns the path to the root path where the omnibus package expanded to.
+    # In the future, this value may be variable (if we ever support windows)
+    # but for right now it is static.
     #
-
+    # @return [String]
+    #
     def omnibus_root
-      "/opt/chef"
+      '/opt/chef'
     end
 
+    #
+    # Returns the path to the directory where the primary binaries are stored.
+    # These are the binaries that are designed to be accessible to the end user.
+    #
+    # @return [String]
+    #
     def omnibus_bin_dir
-      "/opt/chef/bin"
+      '/opt/chef/bin'
     end
 
+    #
+    # Returns the path to the directory where the embedded binaries are stored.
+    # These are the binaries that primary binaries will use but are not intended
+    # to be used by the end user.
+    #
+    # @return [String]
+    #
     def omnibus_embedded_bin_dir
-      "/opt/chef/embedded/bin"
+      '/opt/chef/embedded/bin'
     end
 
+    #
+    # Returns a path to the data directory in the development repository for
+    # easy reference in the unit and functional tests.
+    #
+    # @return [String]
+    #
     def data_path
       File.expand_path(File.dirname(__FILE__) + "../../../data")
     end
 
+    #
+    # Returns a modified path string that includes the primary and embedded binary
+    # paths.
+    #
+    # @return [String]
+    #
     def path
-      "#{omnibus_root}/bin:#{omnibus_root}/embedded/bin:/usr/local/bin:/usr/local/sbin:/bin:/sbin:/usr/bin:/usr/sbin"
+      "#{omnibus_bin_dir}:#{omnibus_embedded_bin_dir}:/usr/local/bin:/usr/local/sbin:/bin:/sbin:/usr/bin:/usr/sbin"
     end
 
+    #
     # Returns the FIFO pipe that will be used for communication with chef-init main.
     #
-    # @return [String] the path to the FIFO pipe
+    # @return [String]
+    #
     def log_pipe
       '/opt/chef/logs'
     end

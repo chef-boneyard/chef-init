@@ -18,6 +18,12 @@
 require 'mixlib/log'
 
 module ChefInit
+  #
+  # This class is an extension of the Mixlib:Log class for use inside
+  # ChefInit. Any chef-init specific log messages should be sent here.
+  #
+  # See the Mixlib::Log documentation for more details.
+  #
   class Log
     extend Mixlib::Log
   end

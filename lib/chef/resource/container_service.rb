@@ -20,10 +20,26 @@ require 'chef/provider/container_service/runit'
 
 class Chef
   class Resource
+    #
+    # This is a monkeypatch to the Service resource. It serves as the glue
+    # between the existing +service+ resource and the needs of the container
+    # service environment.
+    #
     class Service
 
+      #
+      # We alias the original Service resource's initialize statement so that
+      # we can overwrite it with our own.
+      #
       alias_method :orig_initialize, :initialize
 
+      #
+      # Create the +service+ resource object but then inspect the node object
+      # looking for the +node[:container_service][service_name][:command]+ attribute.
+      # If we find it, we override the backend provider with the included provider.
+      # Currently, we only support the custom +runit+ provider but in the future
+      # we may support others.
+      #
       def initialize(name, run_context=nil)
         orig_initialize(name, run_context)
 
@@ -34,6 +50,16 @@ class Chef
         end
       end
 
+      #
+      # Inspects the node object and returns whether or not it could find the
+      # +node[:container_service][service_name][:command]+ node attribute.
+      #
+      # The +node[:container_service][service_name][:command]+ attribute will
+      # hold the command the container_service provider needs in order to launch
+      # the service.
+      #
+      # @return [Boolean]
+      #
       def container_service_command_specified?
         unless @run_context.nil? || @run_context.node.nil?
           if @run_context.node.key?("container_service")

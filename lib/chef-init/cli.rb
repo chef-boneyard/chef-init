@@ -22,6 +22,27 @@ require 'chef-init/process'
 require 'mixlib/cli'
 
 module ChefInit
+  #
+  # This is the main interface that you will interact with when launching a
+  # container. The CLI will accept various parameters and those parameters
+  # indicate the behavior you want happen when you launch the container.
+  #
+  # chef-init --version
+  #    The +version+ parameter will return the various versions of important
+  #    applications inside the container. Specifically, the version of chef-init
+  #    and chef-client.
+  #
+  # chef-init --bootstrap
+  #    The +bootstrap+ parameter will run chef-client and then exit with the
+  #    exit status of the chef-client run. It is intended to be used inside a
+  #    Dockerfile as a RUN line. This command only be used as a PID1 if you want
+  #    the container to exit as soon as the chef-client run has completed.
+  #
+  # chef-init --onboot
+  #    The +onboot+ parameter is the primary PID1 that you will use. It will
+  #    launch the process supervisor and then run chef-client. It will then keep
+  #    the container alive until it receives the proper SIGNAL.
+  #
   class CLI
     include Mixlib::CLI
     include ChefInit::Helpers
@@ -32,66 +53,85 @@ module ChefInit
     attr_reader :chef_client
 
     option :config_file,
-      :short        => "-c CONFIG",
-      :long         => "--config",
-      :description  => "The configuration file to use"
+      :short        => '-c CONFIG',
+      :long         => '--config',
+      :description  => 'The Chef configuration file to use instead of the ' \
+                        'default (/etc/chef/{client,zero}.rb).'
 
     option :json_attribs,
-      :short        => "-j JSON_ATTRIBS",
-      :long         => "--json-attributes",
-      :description  => "Load attributes from a JSON file or URL"
+      :short        => '-j JSON_ATTRIBS',
+      :long         => '--json-attributes',
+      :description  => 'Load node attributes from a JSON file or URL.'
 
     option :local_mode,
-      :short        => "-z",
-      :long         => "--local-mode",
-      :description  => "Point chef-client at local repository",
+      :short        => '-z',
+      :long         => '--local-mode',
+      :description  => 'Run the chef client in local mode (do not connect to ' \
+                        ' chef server).',
       :boolean      => true
 
     option :bootstrap,
-      :long         => "--bootstrap",
-      :description  => "",
+      :long         => '--bootstrap',
+      :description  => 'Run the chef client once and then exit with chef ' \
+                        'client\'s exit status.',
       :boolean      => true,
       :default      => false
 
     option :onboot,
-      :long         => "--onboot",
-      :description  => "",
+      :long         => '--onboot',
+      :description  => 'Run the chef client once and then keep alive until a ' \
+                        'POSIX signal is received.',
       :boolean      => true,
       :default      => false
 
     option :remove_secure,
-      :long         => "--[no-]remove-secure",
-      :description  => "Remove secure credentials from image.",
+      :long         => '--[no-]remove-secure',
+      :description  => 'Do not remove secure credentials (validation key, encrypted ' \
+                        'data bag secret, etc) from image.',
       :boolean      => true,
       :default      => true
 
     option :verify,
-      :long         => "--verify",
-      :description  => "Verify installation",
+      :long         => '--verify',
+      :description  => 'Run integration tests to ensure that the installation of ' \
+                       'chef-container was successful.',
       :boolean      => true
 
     option :log_level,
-      :short        => "-l LEVEL",
-      :long         => "--log_level LEVEL",
-      :description  => "Set the log level (debug, info, warn, error, fatal)",
-      :default      => "info"
+      :short        => '-l LEVEL',
+      :long         => '--log_level LEVEL',
+      :description  => 'Set the log level (debug, info, warn, error, fatal).',
+      :default      => 'info'
 
     option :environment,
-      :short        => "-E ENVIRONMENT",
-      :long         => "--environment",
-      :description  => "Set the Chef Environment on the node"
+      :short        => '-E ENVIRONMENT',
+      :long         => '--environment ENVIRONMENT',
+      :description  => 'Set the Chef Environment for the container node.'
 
     option :version,
-      :short        => "-v",
-      :long         => "--version",
+      :short        => '-v',
+      :long         => '--version',
+      :description  => 'Display the versions of the relevant Chef components.',
       :boolean      => true
 
+    #
+    # Creates a new CLI object
+    #
+    # @param [Array] argv
+    #   The command line parameters and arguments passed in via the CLI
+    # @param [Fixnum] max_retries
+    #   The number of attempts that should be made for various internal tasks
+    #   before giving up.
+    #
     def initialize(argv, max_retries=5)
       @argv = argv
       @max_retries = max_retries
       super()
     end
 
+    #
+    # Accepts in the ARGV arguments and runs the primary chef-init application.
+    #
     def run
       parse_options(@argv)
       ChefInit::Log.level = config[:log_level].to_sym
@@ -101,7 +141,8 @@ module ChefInit
         msg "ChefInit Version: #{ChefInit::VERSION}"
         exit true
       when config[:onboot] && config[:bootstrap]
-        err "You must pass in either the --onboot OR the --bootstrap flag, but not both."
+        err 'You may pass in either the --onboot OR the --bootstrap ' \
+            'flag but not both.'
         exit false
       when config[:onboot]
         set_default_options
@@ -113,53 +154,111 @@ module ChefInit
         verify = ChefInit::Verify.new
         verify.run
       else
-        err "You must pass in either the --onboot, --bootstrap, or --verify flag."
+        err 'You must pass in either the --onboot, --bootstrap, ' \
+            'or --version flag.'
         exit false
       end
     end
 
+    private
+
+    #
+    # Evaluate the state of the system to determine whether the we should
+    # connect to and run against a Chef Server or if we are running in
+    # local mode.
+    #
+    # If a valid configuration file (client.rb or zero.rb) we will print
+    # an error message and exit with a non-zero exit code.
+    #
     def set_default_options
-      if File.exist?("/etc/chef/zero.rb") || (config.key?(:config_file) &&
-          config[:config_file].match(/^.*zero\.rb$/)) || config[:local_mode]
+      case
+      when configured_for_local_mode?
+        validate_local_mode_config
         set_local_mode_defaults
-      elsif File.exist?("/etc/chef/client.rb") || (config.key?(:config_file) &&
-          config[:config_file].match(/^.*client\.rb$/))
-        unless (File.exist?("/etc/chef/secure/validation.pem") ||
-            File.exist?("/etc/chef/secure/client.pem"))
-          err "File /etc/chef/secure/validator.pem is missing. Please make " \
-            "sure your secure credentials are accessible to the running container."
-          exit false
-        end
+      when configured_for_server_mode?
+        validate_server_mode_config
         set_server_mode_defaults
       else
-        err "Cannot find a valid configuration file in /etc/chef"
+        err 'Cannot find a valid Chef configuration file in /etc/chef.'
         exit false
       end
     end
 
+    #
+    # Returns whether or not the the system has the neccesary files to run
+    # the chef client in local mode.
+    #
+    # @return [Boolean]
+    #
+    def configured_for_local_mode?
+      File.exist?('/etc/chef/zero.rb') ||
+      (config.key?(:config_file) && config[:config_file].match(/^.*zero\.rb$/)) ||
+      config[:local_mode]
+    end
+
+    #
+    # Validate that the components neccesary to run the chef-client in local
+    # mode exist. If they do not, print an error message and exit with a non-zero
+    # exit code.
+    #
+    def validate_local_mode_config
+    end
+
+    #
+    # Set various config options with the local mode values.
+    #
     def set_local_mode_defaults
       config[:local_mode] ||= true
-      config[:config_file] ||= "/etc/chef/zero.rb"
-      config[:json_attribs] ||= "/etc/chef/first-boot.json"
+      config[:config_file] ||= '/etc/chef/zero.rb'
+      config[:json_attribs] ||= '/etc/chef/first-boot.json'
     end
 
+    #
+    # Returns whether or not the the system has the neccesary files to connect
+    # to a chef server and run the chef-client in server mode.
+    #
+    # @return [Boolean]
+    #
+    def configured_for_server_mode?
+      File.exist?('/etc/chef/client.rb') ||
+      (config.key?(:config_file) && config[:config_file].match(/^.*client\.rb$/))
+    end
+
+    #
+    # Validate that the components neccesary to run the chef-client in server
+    # mode exist. If they do not, print an error message and exit with a non-zero
+    # exit code.
+    #
+    def validate_server_mode_config
+      unless (File.exist?('/etc/chef/secure/validation.pem') ||
+              File.exist?('/etc/chef/secure/client.pem'))
+        err 'File /etc/chef/secure/validator.pem is missing. Please make ' \
+          'sure your secure credentials are accessible to the running container.'
+        exit false
+      end
+    end
+
+    #
+    # Set various config options with the server mode values.
+    #
     def set_server_mode_defaults
       config[:local_mode] ||= false
-      config[:config_file] ||= "/etc/chef/client.rb"
-      config[:json_attribs] ||= "/etc/chef/first-boot.json"
+      config[:config_file] ||= '/etc/chef/client.rb'
+      config[:json_attribs] ||= '/etc/chef/first-boot.json'
     end
 
-    ##
-    # Launch onboot
+    #
+    # Launch the process supervisor and run chef client. Wait until POSIX
+    # signals are received which indicate that PID1 should be shutdown.
+    # When that happens, tell the supervisor to shutdown all the processes
+    # it is responsible for. After that happens, exit with 0.
     #
     def launch_onboot
-      # Catch SIGKILL
       trap("KILL") do
         ChefInit::Log.info("Received SIGKILL - shutting down supervisor")
         shutdown_supervisor
       end
 
-      # Catch SIGTERM
       trap("TERM") do
         ChefInit::Log.info("Received SIGTERM - shutting down supervisor")
         shutdown_supervisor
@@ -216,6 +315,10 @@ module ChefInit
       exit chef_client_exitstatus
     end
 
+    #
+    # Shuts down the supervisor process as well as all the processes
+    # that the supervisor is responsible for.
+    #
     def shutdown_supervisor
       ChefInit::Log.debug("Waiting for services to stop...")
 
@@ -234,25 +337,35 @@ module ChefInit
       ChefInit::Log.debug("Shutdown complete...")
     end
 
+    #
+    # Returns the proper chef client command to use when running chef-client.
+    # This value is calculated based on the options that were passed in to the
+    # CLI.
+    #
+    # @return [String]
+    #
     def chef_client_command
       command = ["chef-client"]
+      command = ['chef-client']
       command << "-c #{config[:config_file]}"
       command << "-j #{config[:json_attribs]}"
       command << "-l #{config[:log_level]}"
 
       if config[:local_mode]
-        command << "-z"
+        command << '-z'
       end
 
       unless config[:environment].nil?
         command << "-E #{config[:environment]}"
       end
 
-      command.join(" ")
+      command.join(' ')
     end
-
-    private
-
+    
+    #
+    # Wait for the supervisor to show up in the process table. After the
+    # specified number of attempts, just give up and return.
+    #
     def wait_for_supervisor
       max_wait = 10
       wait = 0
@@ -262,30 +375,60 @@ module ChefInit
       end
     end
 
+    #
+    # Returns the command to use to launch the process supervisor.
+    #
+    # @return [String]
+    #
     def supervisor_launch_command
       "#{omnibus_embedded_bin_dir}/runsvdir -P #{omnibus_root}/service 'log: #{ '.' * 395}'"
     end
 
+    #
+    # Delete the contents of the secure directory
+    #
     def empty_secure_directory
       FileUtils.rm_rf("/etc/chef/secure/.", secure: true)
     end
 
+    #
+    # Delete the client key
+    #
     def delete_client_key
-      File.delete("/etc/chef/secure/client.pem") if File.exist?("/etc/chef/secure/client.pem")
+      File.delete('/etc/chef/secure/client.pem') if File.exist?('/etc/chef/secure/client.pem')
     end
 
+    #
+    # Delete the .node_name file
+    #
     def delete_node_name_file
-      File.delete("/etc/chef/.node_name") if File.exist?("/etc/chef/.node_name")
+      File.delete('/etc/chef/.node_name') if File.exist?('/etc/chef/.node_name')
     end
 
+    #
+    # Delete the valdiation key.
+    #
     def delete_validation_key
-      File.delete("/etc/chef/secure/validation.pem") if File.exist?("/etc/chef/secure/validation.pem")
+      File.delete('/etc/chef/secure/validation.pem') if File.exist?('/etc/chef/secure/validation.pem')
     end
 
+    #
+    # Returns a list of all the services that the process supervisor
+    # is currently responsible for.
+    #
+    # @return [Array#String]
+    #
     def get_all_services_files
       Dir[File.join("#{omnibus_root}/service", '*')]
     end
 
+    #
+    # Returns an array with the fully-qualified paths to all the
+    # service folders that the process supervisor is currently
+    # responsible for.
+    #
+    # @return [Array#String]
+    #
     def get_all_services
       get_all_services_files.map { |f| File.basename(f) }.sort
     end

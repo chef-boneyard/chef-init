@@ -111,7 +111,7 @@ describe ChefInit::CLI do
         expect(cli).to receive(:exit).with(false)
         cli.run
         expect(stderr).to eql('You must pass in either the --onboot, ' \
-          "--bootstrap, or --verify flag.\n")
+          "--bootstrap, --verify or --version flag.\n")
       end
     end
 
@@ -131,8 +131,8 @@ describe ChefInit::CLI do
       it 'gives an \'invalid option\' message, the help output and exits' do
         expect(cli).to receive(:exit).with(false)
         cli.run
-        expect(stderr).to eql('You must pass in either the --onboot OR the ' \
-          "--bootstrap flag, but not both.\n")
+        expect(stderr).to eql('You may pass in either the --onboot OR the ' \
+          "--bootstrap flag but not both.\n")
       end
     end
 
@@ -141,11 +141,12 @@ describe ChefInit::CLI do
   describe '#set_default_options' do
     context 'when zero.rb exists' do
       before do
-        allow(File).to receive(:exist?).with('/etc/chef/zero.rb').and_return(true)
-        allow(File).to receive(:exist?).with('/etc/chef/client.rb').and_return(false)
+        allow(cli).to receive(:configured_for_local_mode?).and_return(true)
+        allow(cli).to receive(:configured_for_server_mode?).and_return(false)
       end
 
       it 'sets local-mode defaults' do
+        expect(cli).to receive(:validate_local_mode_config)
         expect(cli).to receive(:set_local_mode_defaults)
         cli.set_default_options
       end
@@ -153,75 +154,63 @@ describe ChefInit::CLI do
 
     context 'when client.rb exists' do
       before do
-        allow(File).to receive(:exist?).with("/etc/chef/zero.rb").and_return(false)
-        allow(File).to receive(:exist?).with("/etc/chef/client.rb").and_return(true)
+        allow(cli).to receive(:configured_for_local_mode?).and_return(false)
+        allow(cli).to receive(:configured_for_server_mode?).and_return(true)
       end
 
       it 'sets client-mode defaults' do
+        expect(cli).to receive(:validate_server_mode_config)
         expect(cli).to receive(:set_server_mode_defaults)
         cli.set_default_options
       end
 
-      context 'with missing validator and client keys' do
-        before do
-          allow(File).to receive(:exist?).with('/etc/chef/client.rb').and_return(true)
-          allow(File).to receive(:exist?).with('/etc/chef/zero.rb').and_return(false)
-          allow(File).to receive(:exist?).with('/etc/chef/secure/validation.pem').and_return(false)
-          allow(File).to receive(:exist?).with('/etc/chef/secure/client.pem').and_return(false)
-        end
 
-        it 'errors out and prints a message' do
-          expect(cli).to receive(:exit).with(false)
-          cli.set_default_options
-          expect(stderr).to eql('File /etc/chef/secure/validator.pem is missing.' \
-            ' Please make sure your secure credentials are accessible' \
-            " to the running container.\n")
-        end
-      end
     end
-
     context 'when valid configuration file does not exist' do
       before do
-        allow(File).to receive(:exist?).with('/etc/chef/client.rb').and_return(false)
-        allow(File).to receive(:exist?).with('/etc/chef/zero.rb').and_return(false)
+        allow(cli).to receive(:configured_for_local_mode?).and_return(false)
+        allow(cli).to receive(:configured_for_server_mode?).and_return(false)
       end
 
       it 'exits with error' do
         expect(cli).to receive(:exit).with(false)
         cli.set_default_options
-        expect(stderr).to eql("Cannot find a valid configuration file in /etc/chef\n")
+        expect(stderr).to eql("Cannot find a valid Chef configuration file in /etc/chef.\n")
       end
     end
   end
 
   describe '#set_local_mode_defaults' do
-    before { cli.set_local_mode_defaults }
-
-    it 'sets local mode to true' do
+    it 'sets config values to local mode values' do
+      cli.set_local_mode_defaults
       expect(cli.config[:local_mode]).to eql(true)
-    end
-
-    it 'uses zero.rb for the config file' do
       expect(cli.config[:config_file]).to eql('/etc/chef/zero.rb')
-    end
-
-    it 'uses first-boot.json for json attributes' do
       expect(cli.config[:json_attribs]).to eql('/etc/chef/first-boot.json')
     end
   end
 
+  describe '#validate_server_mode_config' do
+    context 'when validator and client keys are missing' do
+      before do
+        allow(File).to receive(:exist?).with('/etc/chef/secure/validation.pem').and_return(false)
+        allow(File).to receive(:exist?).with('/etc/chef/secure/client.pem').and_return(false)
+      end
+
+      it 'errors out and prints a message' do
+        expect(cli).to receive(:exit).with(false)
+        cli.validate_server_mode_config
+        expect(stderr).to eql('File /etc/chef/secure/validator.pem is missing.' \
+          ' Please make sure your secure credentials are accessible' \
+          " to the running container.\n")
+      end
+    end
+  end
+
   describe '#set_server_mode_defaults' do
-    before { cli.set_server_mode_defaults }
-
-    it 'sets local mode to false' do
+    it 'sets config values to server mode values' do
+      cli.set_server_mode_defaults
       expect(cli.config[:local_mode]).to eql(false)
-    end
-
-    it 'uses client.rb for the config file' do
       expect(cli.config[:config_file]).to eql('/etc/chef/client.rb')
-    end
-
-    it 'uses first-boot.json for json attributes' do
       expect(cli.config[:json_attribs]).to eql('/etc/chef/first-boot.json')
     end
   end

@@ -30,16 +30,4 @@ describe Chef::Provider::ContainerService do
   it 'should extend Chef::Provider::Service' do
     expect(@provider).to be_a_kind_of(Chef::Provider::Service)
   end
-
-  describe '#omnibus_root' do
-    it 'should return /opt/chef' do
-      expect(@provider.omnibus_root).to eql('/opt/chef')
-    end
-  end
-
-  describe '#omnibus_embedded_bin_dir' do
-    it 'should return /opt/chef/embedded/bin' do
-      expect(@provider.omnibus_embedded_bin_dir).to eql('/opt/chef/embedded/bin')
-    end
-  end
 end
