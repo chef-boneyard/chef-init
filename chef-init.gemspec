@@ -20,10 +20,7 @@ Gem::Specification.new do |s|
   s.test_files    = s.files.grep(%r{^(test|spec|features)/})
   s.require_paths = ["lib"]
 
-  s.add_dependency "mixlib-cli", "~> 1.5"
-  s.add_dependency "mixlib-shellout", "~> 1.4"
-  s.add_dependency "mixlib-log", "~> 1.1"
-  s.add_dependency "chef", "= 11.12.8"
+  s.add_dependency "chef", ">= 11.12.8"
   s.add_dependency "docker-api", "~> 1.11.1"
   s.add_dependency 'sys-proctable', '~> 0.9.4'
 
