@@ -17,7 +17,6 @@
 
 require 'chef-init/version'
 require 'chef-init/helpers'
-require 'chef-init/verify'
 require 'childprocess'
 require 'mixlib/cli'
 
@@ -150,11 +149,8 @@ module ChefInit
       when config[:bootstrap]
         set_default_options
         launch_bootstrap
-      when config[:verify]
-        verify = ChefInit::Verify.new
-        verify.run
       else
-        err 'You must pass in either the --onboot, --bootstrap, ' \
+        err 'You must pass in either the --onboot, --bootstrap ' \
             'or --version flag.'
         exit false
       end

@@ -94,24 +94,13 @@ describe ChefInit::CLI do
       end
     end
 
-    describe 'when verify flag is passed' do
-      let(:argv) { %w[ --verify ] }
-      let(:verify) { double('ChefInit::Verify', run: nil) }
-
-      it 'runs the verification process' do
-        allow(ChefInit::Verify).to receive(:new).and_return(verify)
-        expect(verify).to receive(:run)
-        cli.run
-      end
-    end
-
     describe 'when given no arguments or options' do
       let(:argv) { [] }
       it 'alerts that you must pass in a flag or arguments' do
         expect(cli).to receive(:exit).with(false)
         cli.run
         expect(stderr).to eql('You must pass in either the --onboot, ' \
-          "--bootstrap, --verify or --version flag.\n")
+          "--bootstrap or --version flag.\n")
       end
     end
 
