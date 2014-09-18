@@ -1,5 +1,5 @@
 {
-  "run_list": ["recipe[foo]"],
+  "run_list": ["recipe[chef-init-test]"],
   "container_service": {
     "chef-init-test": {
       "command": "/opt/chef/bin/chef-init-test"
