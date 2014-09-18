@@ -17,10 +17,15 @@
 
 require 'spec_helper'
 
-describe ChefInit::Exceptions::ProcessSupervisorNotRunning do
-  it { should be_a_kind_of(RuntimeError) }
-end
+describe ChefInit::Exceptions do
+  exception_to_super_class = {
+    ChefInit::Exceptions::InvalidLogDestination => RuntimeError,
+    ChefInit::Exceptions::LoggerNotImplemented => RuntimeError
+  }
 
-describe ChefInit::Exceptions::OmnibusInstallNotFound do
-  it { should be_a_kind_of(RuntimeError) }
+  exception_to_super_class.each do |exception, expected_super_class|
+    it "has an exception class of #{exception} which inherits from #{expected_super_class}" do
+      expect{ raise exception }.to raise_error(expected_super_class)
+    end
+  end
 end

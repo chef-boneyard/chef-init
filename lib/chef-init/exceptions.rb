@@ -17,29 +17,7 @@
 
 module ChefInit
   module Exceptions
-
-    class ProcessNotFound < RuntimeError; end
-    class InvalidProcessID < RuntimeError; end
-
     class InvalidLogDestination < RuntimeError; end
     class LoggerNotImplemented < RuntimeError; end
-
-    class ProcessSupervisorNotRunning < RuntimeError
-      def initialize
-        super("Specified process supervisor did not start in the given timeframe.")
-      end
-    end
-
-    class OmnibusInstallNotFound < RuntimeError
-      def initialize
-        super("Can not find omnibus installation directory for Chef.")
-      end
-    end
-
-    class ChefClientRunFailure < RuntimeError
-      def initialize
-        super("Chef Client run failed.")
-      end
-    end
   end
 end
