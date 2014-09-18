@@ -51,30 +51,13 @@ describe ChefInit::CLI do
   end
 
   describe '#run' do
-    before do
-      allow(cli).to receive(:launch_onboot)
-      allow(cli).to receive(:launch_bootstrap)
-    end
-
-    describe 'when the application starts' do
-      let(:argv) { %w[ --version ] }
-
-      it 'parses the input' do
-        expect(cli).to receive(:parse_options).and_call_original
-        expect(cli).to receive(:exit).with(true)
-        cli.run
-      end
-    end
-
     describe 'when onboot flag is passed' do
       let(:argv) { %w[ --onboot ] }
+      before { cli.config[:onboot] = true }
 
-      it 'sets default options' do
+      it 'parses parameters and sets default options, then runs onboot' do
+        expect(cli).to receive(:parse_options).with(argv)
         expect(cli).to receive(:set_default_options)
-        cli.run
-      end
-
-      it 'launches onboot steps' do
         expect(cli).to receive(:launch_onboot)
         cli.run
       end
@@ -82,13 +65,11 @@ describe ChefInit::CLI do
 
     describe 'when bootstrap flag is passed' do
       let(:argv) { %w[ --bootstrap ] }
+      before { cli.config[:bootstrap] = true }
 
-      it 'sets default options' do
+      it 'parses parameters and sets default options, then runs onboot' do
+        expect(cli).to receive(:parse_options).with(argv)
         expect(cli).to receive(:set_default_options)
-        cli.run
-      end
-
-      it 'launches build steps' do
         expect(cli).to receive(:launch_bootstrap)
         cli.run
       end
@@ -124,7 +105,6 @@ describe ChefInit::CLI do
           "--bootstrap flag but not both.\n")
       end
     end
-
   end
 
   describe '#set_default_options' do
@@ -152,9 +132,8 @@ describe ChefInit::CLI do
         expect(cli).to receive(:set_server_mode_defaults)
         cli.set_default_options
       end
-
-
     end
+
     context 'when valid configuration file does not exist' do
       before do
         allow(cli).to receive(:configured_for_local_mode?).and_return(false)
@@ -169,213 +148,43 @@ describe ChefInit::CLI do
     end
   end
 
-  describe '#set_local_mode_defaults' do
-    it 'sets config values to local mode values' do
-      cli.set_local_mode_defaults
-      expect(cli.config[:local_mode]).to eql(true)
-      expect(cli.config[:config_file]).to eql('/etc/chef/zero.rb')
-      expect(cli.config[:json_attribs]).to eql('/etc/chef/first-boot.json')
-    end
-  end
-
-  describe '#validate_server_mode_config' do
-    context 'when validator and client keys are missing' do
-      before do
-        allow(File).to receive(:exist?).with('/etc/chef/secure/validation.pem').and_return(false)
-        allow(File).to receive(:exist?).with('/etc/chef/secure/client.pem').and_return(false)
-      end
-
-      it 'errors out and prints a message' do
-        expect(cli).to receive(:exit).with(false)
-        cli.validate_server_mode_config
-        expect(stderr).to eql('File /etc/chef/secure/validator.pem is missing.' \
-          ' Please make sure your secure credentials are accessible' \
-          " to the running container.\n")
-      end
-    end
-  end
-
-  describe '#set_server_mode_defaults' do
-    it 'sets config values to server mode values' do
-      cli.set_server_mode_defaults
-      expect(cli.config[:local_mode]).to eql(false)
-      expect(cli.config[:config_file]).to eql('/etc/chef/client.rb')
-      expect(cli.config[:json_attribs]).to eql('/etc/chef/first-boot.json')
-    end
-  end
-
   describe '#launch_onboot' do
-    let(:supervisor) { double('Supervisor', pid: 1000, launch: nil, wait: 0) }
-    let(:chefrun) { double('Chef Client Run', pid: 1001, launch: nil, wait: 0) }
-    let(:runit_cmd) { 'runsvdir -P' }
-    let(:chef_cmd) { 'chef-client' }
-
-    before do
-      allow(cli).to receive(:supervisor_launch_command).and_return(runit_cmd)
-      allow(cli).to receive(:chef_client_command).and_return(chef_cmd)
-      allow(ChefInit::Process).to receive(:new).with(runit_cmd).and_return(supervisor)
-      allow(cli).to receive(:wait_for_supervisor)
-      allow(ChefInit::Process).to receive(:new).with(chef_cmd).and_return(chefrun)
-      allow(cli).to receive(:delete_validation_key)
-    end
-
-    it 'launches process supervisor' do
-      expect(supervisor).to receive(:launch)
-      expect(cli).to receive(:exit).with(true)
-      cli.launch_onboot
-    end
-
-    it 'waits for the supervisor to start' do
-      expect(cli).to receive(:wait_for_supervisor)
-      expect(cli).to receive(:exit).with(true)
-      cli.launch_onboot
-    end
-
-    it 'executes chef-client' do
-      expect(chefrun).to receive(:launch)
-      expect(cli).to receive(:exit).with(true)
-      cli.launch_onboot
-    end
-
-    it 'waits for chef-client to finish' do
-      expect(chefrun).to receive(:wait).and_return(0)
-      expect(cli).to receive(:exit).with(true)
-      cli.launch_onboot
-    end
-
-    it 'deletes validation key when chef-client is finished' do
+    it 'starts supervisor, runs chef-client, cleans up and waits' do
+      expect(cli).to receive(:launch_supervisor)
+      expect(cli).to receive(:run_chef_client)
       expect(cli).to receive(:delete_validation_key)
-      expect(cli).to receive(:exit).with(true)
-      cli.launch_onboot
-    end
-
-    it 'catches SIGTERM and SIGKILL to shutdown supervisor' do
-      expect(cli).to receive(:trap).with("TERM")
-      expect(cli).to receive(:trap).with("KILL")
-      expect(cli).to receive(:exit).with(true)
-      cli.launch_onboot
-    end
-
-    it 'waits for supervisor to exit' do
-      expect(supervisor).to receive(:wait).and_return(0)
-      expect(cli).to receive(:exit).with(true)
+      expect(cli).to receive(:wait_for_supervisor)
+      expect(cli).to receive(:exit)
       cli.launch_onboot
     end
   end
 
   describe '#launch_bootstrap' do
-    let(:supervisor) { double('Supervisor', pid: 1000, launch: nil, wait: 0) }
-    let(:chefrun) { double('Chef Client Run', pid: 1001, launch: nil, wait: 0) }
-    let(:runit_cmd) { 'runsvdir -P' }
-    let(:chef_cmd) { 'chef-client' }
+    let(:exitcode) { 0 }
 
-    before do
-      allow(cli).to receive(:supervisor_launch_command).and_return(runit_cmd)
-      allow(cli).to receive(:chef_client_command).and_return(chef_cmd)
-      allow(ChefInit::Process).to receive(:new).with(runit_cmd).and_return(supervisor)
-      allow(cli).to receive(:wait_for_supervisor)
-      allow(ChefInit::Process).to receive(:new).with(chef_cmd).and_return(chefrun)
-      allow(cli).to receive(:delete_client_key)
-      allow(cli).to receive(:delete_node_name_file)
-      allow(cli).to receive(:shutdown_supervisor)
-      allow(cli).to receive(:empty_secure_directory)
-    end
-
-    it 'launches the process supervisor' do
-      expect(supervisor).to receive(:launch)
-      expect(cli).to receive(:exit).with(true)
-      cli.launch_bootstrap
-    end
-
-    it 'waits for the supervisor to start' do
-      expect(cli).to receive(:wait_for_supervisor)
-      expect(cli).to receive(:exit).with(true)
-      cli.launch_bootstrap
-    end
-
-    it 'executes chef-client' do
-      expect(chefrun).to receive(:launch)
-      expect(cli).to receive(:exit).with(true)
-      cli.launch_bootstrap
-    end
-
-    it 'waits for chef-client to finish' do
-      expect(chefrun).to receive(:wait).and_return(0)
-      expect(cli).to receive(:exit).with(true)
-      cli.launch_bootstrap
-    end
-
-    it 'deletes the client key after chef-client is finished' do
+    it 'starts supervisor, runs chef-client, cleans up and exits' do
+      expect(cli).to receive(:launch_supervisor)
+      expect(cli).to receive(:run_chef_client).and_return(exitcode)
       expect(cli).to receive(:delete_client_key)
-      expect(cli).to receive(:exit).with(true)
-      cli.launch_bootstrap
-    end
-
-    it 'deletes the node name file if it exists' do
       expect(cli).to receive(:delete_node_name_file)
-      expect(cli).to receive(:exit).with(true)
-      cli.launch_bootstrap
-    end
-
-    it 'shuts down the supervisor' do
-      expect(cli).to receive(:shutdown_supervisor)
-      expect(cli).to receive(:exit).with(true)
-      cli.launch_bootstrap
-    end
-
-    it 'deletes the secure directory' do
       expect(cli).to receive(:empty_secure_directory)
-      expect(cli).to receive(:exit).with(true)
+      expect(cli).to receive(:shutdown_supervisor)
+      expect(cli).to receive(:exit).with(exitcode)
       cli.launch_bootstrap
     end
 
     context 'when --no-delete-secure is specified' do
       before { cli.config[:remove_secure] = false }
       it 'does not delete the secure directory' do
+        expect(cli).to receive(:launch_supervisor)
+        expect(cli).to receive(:run_chef_client).and_return(exitcode)
+        expect(cli).to receive(:delete_client_key)
+        expect(cli).to receive(:delete_node_name_file)
         expect(cli).not_to receive(:empty_secure_directory)
-        expect(cli).to receive(:exit).with(true)
+        expect(cli).to receive(:shutdown_supervisor)
+        expect(cli).to receive(:exit).with(exitcode)
         cli.launch_bootstrap
       end
-    end
-
-  end
-
-  describe '#chef_client_command' do
-    describe 'with local-mode defaults' do
-      before do
-        cli.config[:local_mode] = true
-        cli.config[:config_file] = '/etc/chef/zero.rb'
-        cli.config[:json_attribs] = '/etc/chef/first-boot.json'
-        cli.config[:log_level] = :info
-      end
-
-      it { expect(cli.send(:chef_client_command)).to eql('chef-client -c ' \
-        '/etc/chef/zero.rb -j /etc/chef/first-boot.json -l info -z') }
-    end
-
-    describe 'with server-mode defaults' do
-      before do
-        cli.config[:local_mode] = false
-        cli.config[:config_file] = '/etc/chef/client.rb'
-        cli.config[:json_attribs] = '/etc/chef/first-boot.json'
-        cli.config[:log_level] = :info
-      end
-
-      it { expect(cli.send(:chef_client_command)).to eql('chef-client -c ' \
-        '/etc/chef/client.rb -j /etc/chef/first-boot.json -l info') }
-    end
-
-    describe 'with environment specified' do
-      before do
-        cli.config[:local_mode] = true
-        cli.config[:config_file] = '/etc/chef/zero.rb'
-        cli.config[:json_attribs] = '/etc/chef/first-boot.json'
-        cli.config[:log_level] = :info
-        cli.config[:environment] = 'prod'
-      end
-
-      it { expect(cli.send(:chef_client_command)).to eql('chef-client -c ' \
-        '/etc/chef/zero.rb -j /etc/chef/first-boot.json -l info -z -E prod')}
     end
   end
 end

@@ -52,66 +52,66 @@ module ChefInit
     attr_reader :chef_client
 
     option :config_file,
-      :short        => '-c CONFIG',
-      :long         => '--config',
-      :description  => 'The Chef configuration file to use instead of the ' \
+      short:        '-c CONFIG',
+      long:         '--config',
+      description:  'The Chef configuration file to use instead of the ' \
                         'default (/etc/chef/{client,zero}.rb).'
 
     option :json_attribs,
-      :short        => '-j JSON_ATTRIBS',
-      :long         => '--json-attributes',
-      :description  => 'Load node attributes from a JSON file or URL.'
+      short:        '-j JSON_ATTRIBS',
+      long:         '--json-attributes',
+      description:  'Load node attributes from a JSON file or URL.'
 
     option :local_mode,
-      :short        => '-z',
-      :long         => '--local-mode',
-      :description  => 'Run the chef client in local mode (do not connect to ' \
+      short:        '-z',
+      long:         '--local-mode',
+      description:  'Run the chef client in local mode (do not connect to ' \
                         ' chef server).',
-      :boolean      => true
+      boolean:      true
 
     option :bootstrap,
-      :long         => '--bootstrap',
-      :description  => 'Run the chef client once and then exit with chef ' \
+      long:         '--bootstrap',
+      description:  'Run the chef client once and then exit with chef ' \
                         'client\'s exit status.',
-      :boolean      => true,
-      :default      => false
+      boolean:      true,
+      default:      false
 
     option :onboot,
-      :long         => '--onboot',
-      :description  => 'Run the chef client once and then keep alive until a ' \
+      long:         '--onboot',
+      description:  'Run the chef client once and then keep alive until a ' \
                         'POSIX signal is received.',
-      :boolean      => true,
-      :default      => false
+      boolean:      true,
+      default:      false
 
     option :remove_secure,
-      :long         => '--[no-]remove-secure',
-      :description  => 'Do not remove secure credentials (validation key, encrypted ' \
+      long:         '--[no-]remove-secure',
+      description:  'Do not remove secure credentials (validation key, encrypted ' \
                         'data bag secret, etc) from image.',
-      :boolean      => true,
-      :default      => true
+      boolean:      true,
+      default:      true
 
     option :verify,
-      :long         => '--verify',
-      :description  => 'Run integration tests to ensure that the installation of ' \
+      long:         '--verify',
+      description:  'Run integration tests to ensure that the installation of ' \
                        'chef-container was successful.',
-      :boolean      => true
+      boolean:      true
 
     option :log_level,
-      :short        => '-l LEVEL',
-      :long         => '--log_level LEVEL',
-      :description  => 'Set the log level (debug, info, warn, error, fatal).',
-      :default      => 'info'
+      short:        '-l LEVEL',
+      long:         '--log_level LEVEL',
+      description:  'Set the log level (debug, info, warn, error, fatal).',
+      default:      'info'
 
     option :environment,
-      :short        => '-E ENVIRONMENT',
-      :long         => '--environment ENVIRONMENT',
-      :description  => 'Set the Chef Environment for the container node.'
+      short:        '-E ENVIRONMENT',
+      long:         '--environment ENVIRONMENT',
+      description:  'Set the Chef Environment for the container node.'
 
     option :version,
-      :short        => '-v',
-      :long         => '--version',
-      :description  => 'Display the versions of the relevant Chef components.',
-      :boolean      => true
+      short:        '-v',
+      long:         '--version',
+      description:  'Display the versions of the relevant Chef components.',
+      boolean:      true
 
     #
     # Creates a new CLI object
@@ -156,8 +156,6 @@ module ChefInit
       end
     end
 
-    private
-
     #
     # Evaluate the state of the system to determine whether the we should
     # connect to and run against a Chef Server or if we are running in
@@ -179,6 +177,63 @@ module ChefInit
         exit false
       end
     end
+
+    #
+    # Launch the process supervisor and run chef client. Wait until POSIX
+    # signals are received which indicate that PID1 should be shutdown.
+    # When that happens, tell the supervisor to shutdown all the processes
+    # it is responsible for. After that happens, exit with 0.
+    #
+    def launch_onboot
+      trap("KILL") do
+        ChefInit::Log.info("Received SIGKILL - shutting down supervisor")
+        shutdown_supervisor
+      end
+
+      trap("TERM") do
+        ChefInit::Log.info("Received SIGTERM - shutting down supervisor")
+        shutdown_supervisor
+      end
+
+      ChefInit::Log.info("Starting Supervisor...")
+      launch_supervisor
+
+      ChefInit::Log.info("Starting chef-client run...")
+      run_chef_client
+
+      ChefInit::Log.info("Deleting validation key")
+      delete_validation_key
+
+      wait_for_supervisor
+
+      exit true
+    end
+
+    #
+    # Launch the process supervisor and execute a chef client run. Once
+    # the chef client run has completed, exit the main process with the
+    # exit status of the chef client run.
+    #
+    def launch_bootstrap
+      ChefInit::Log.info("Starting Supervisor...")
+      launch_supervisor
+
+      ChefInit::Log.info("Starting chef-client run...")
+      ccr_exit_code = run_chef_client
+
+      ChefInit::Log.debug("Deleting client key...")
+      delete_client_key
+      ChefInit::Log.debug("Removing node name file...")
+      delete_node_name_file
+      ChefInit::Log.debug("Emptying secure folder...")
+      empty_secure_directory if config[:remove_secure]
+
+      shutdown_supervisor
+
+      exit ccr_exit_code
+    end
+
+    private
 
     #
     # Returns whether or not the the system has the neccesary files to run
@@ -241,61 +296,6 @@ module ChefInit
       config[:local_mode] ||= false
       config[:config_file] ||= '/etc/chef/client.rb'
       config[:json_attribs] ||= '/etc/chef/first-boot.json'
-    end
-
-    #
-    # Launch the process supervisor and run chef client. Wait until POSIX
-    # signals are received which indicate that PID1 should be shutdown.
-    # When that happens, tell the supervisor to shutdown all the processes
-    # it is responsible for. After that happens, exit with 0.
-    #
-    def launch_onboot
-      trap("KILL") do
-        ChefInit::Log.info("Received SIGKILL - shutting down supervisor")
-        shutdown_supervisor
-      end
-
-      trap("TERM") do
-        ChefInit::Log.info("Received SIGTERM - shutting down supervisor")
-        shutdown_supervisor
-      end
-
-      ChefInit::Log.info("Starting Supervisor...")
-      launch_supervisor
-
-      ChefInit::Log.info("Starting chef-client run...")
-      run_chef_client
-
-      ChefInit::Log.info("Deleting validation key")
-      delete_validation_key
-
-      wait_for_supervisor
-
-      exit true
-    end
-
-    #
-    # Launch the process supervisor and execute a chef client run. Once
-    # the chef client run has completed, exit the main process with the
-    # exit status of the chef client run.
-    #
-    def launch_bootstrap
-      ChefInit::Log.info("Starting Supervisor...")
-      launch_supervisor
-
-      ChefInit::Log.info("Starting chef-client run...")
-      ccr_exit_code = run_chef_client
-
-      ChefInit::Log.debug("Deleting client key...")
-      delete_client_key
-      ChefInit::Log.debug("Removing node name file...")
-      delete_node_name_file
-      ChefInit::Log.debug("Emptying secure folder...")
-      empty_secure_directory if config[:remove_secure]
-
-      shutdown_supervisor
-
-      exit ccr_exit_code
     end
 
     #
