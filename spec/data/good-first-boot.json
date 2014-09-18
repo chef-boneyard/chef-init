@@ -2,7 +2,7 @@
   "run_list": ["recipe[chef-init-test]"],
   "container_service": {
     "chef-init-test": {
-      "command": "/opt/chef/bin/chef-init-test"
+      "command": "/usr/local/bin/chef-init-test"
     }
   }
 }
