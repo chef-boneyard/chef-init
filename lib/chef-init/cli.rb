@@ -206,6 +206,11 @@ module ChefInit
         shutdown_supervisor
       end
 
+      trap("INT") do
+        ChefInit::Log.info("Received SIGINT - shutting down supervisor")
+        shutdown_supervisor
+      end
+
       trap("TERM") do
         ChefInit::Log.info("Received SIGTERM - shutting down supervisor")
         shutdown_supervisor
