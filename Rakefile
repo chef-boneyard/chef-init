@@ -21,14 +21,20 @@ end
 
 desc 'verify the dev docker image'
 task :verify do
-  pid = `docker run -d chef-init-dev chef-init --verify --log_level debug`
+  pid = `docker run -d chef-init-dev chef-init --verify `
   system "docker logs -f #{pid}"
 end
 
-desc 'build and verify chef-init'
+desc 'Build chef-init-dev image and run chef-init --verify'
 task :build_and_verify do
   Rake::Task['build_dev'].invoke
   Rake::Task['verify'].invoke
+end
+
+desc 'Build chef-init-dev image and enter it'
+task :build_and_enter do
+  Rake::Task['build_dev'].invoke
+  system `docker run -i -t chef-init-dev /bin/bash`
 end
 
 task :default => :spec
