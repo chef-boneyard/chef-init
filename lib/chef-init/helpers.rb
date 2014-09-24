@@ -114,32 +114,13 @@ module ChefInit
     end
 
     #
-    # Returns a path to the data directory in the development repository for
-    # easy reference in the unit and functional tests.
-    #
-    # @return [String]
-    #
-    def data_path
-      File.expand_path(File.dirname(__FILE__) + "../../../data")
-    end
-
-    #
     # Returns a modified path string that includes the primary and embedded binary
     # paths.
     #
     # @return [String]
     #
     def path
-      "#{omnibus_bin_dir}:#{omnibus_embedded_bin_dir}:/usr/local/bin:/usr/local/sbin:/bin:/sbin:/usr/bin:/usr/sbin"
-    end
-
-    #
-    # Returns the FIFO pipe that will be used for communication with chef-init main.
-    #
-    # @return [String]
-    #
-    def log_pipe
-      '/opt/chef/logs'
+      "#{omnibus_bin_dir}:#{omnibus_embedded_bin_dir}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
     end
   end
 end

@@ -1,7 +1,10 @@
 require 'chef-init'
 
-cookbook_path   ["#{File.expand_path(File.dirname(__FILE__))}/cookbooks"]
-ssl_verify_mode   :verify_peer
+chef_server_url     'http://127.0.0.1:8889'
+node_name           ChefInit.node_name
+client_key          "./empty_client.pem"
+
+
 Ohai::Config[:disabled_plugins] = [
             :NetworkRoutes,
             :NetworkListeners,

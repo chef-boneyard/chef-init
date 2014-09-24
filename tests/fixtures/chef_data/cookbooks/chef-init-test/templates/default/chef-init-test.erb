@@ -24,7 +24,7 @@ Kernel.trap(:INT) { print("\n"); exit 1 }
 # Set process name to filename (shows up in ps, top)
 $0 = File.basename(__FILE__)
 
-puts 'This is a test - you should see this in your log.'
+puts '<%= @log_message %>'
 
 loop do
   sleep 1

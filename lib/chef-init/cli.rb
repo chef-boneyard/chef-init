@@ -42,6 +42,10 @@ module ChefInit
   #    launch the process supervisor and then run chef-client. It will then keep
   #    the container alive until it receives the proper SIGNAL.
   #
+  # chef-init --verify
+  #    The +verify+ parameters will run the BATS tests the come with the Gem.
+  #    These tests should be used for functional testing. 
+  #
   class CLI
     include Mixlib::CLI
     include ChefInit::Helpers
@@ -51,6 +55,48 @@ module ChefInit
     attr_reader :supervisor
     attr_reader :chef_client
 
+    #
+    # Action Options
+    #
+    option :bootstrap,
+      long:         '--bootstrap',
+      description:  'Run the chef client once and then exit with chef ' \
+                        'client\'s exit status.',
+      boolean:      true,
+      default:      false
+
+    option :onboot,
+      long:         '--onboot',
+      description:  'Run the chef client once and then keep alive until a ' \
+                        'POSIX signal is received.',
+      boolean:      true,
+      default:      false
+
+    option :verify,
+      long:         '--verify',
+      description:  'Run integration tests to verify installation was successful',
+      boolean:      true,
+      default:      false
+
+    option :version,
+      short:        '-v',
+      long:         '--version',
+      description:  'Display the versions of the relevant Chef components.',
+      boolean:      true
+
+    #
+    # Chef Container-specific options
+    #
+    option :remove_secure,
+      long:         '--[no-]remove-secure',
+      description:  'Do not remove secure credentials (validation key, encrypted ' \
+                        'data bag secret, etc) from image.',
+      boolean:      true,
+      default:      true
+
+    #
+    # Chef Client related options
+    #
     option :config_file,
       short:        '-c CONFIG',
       long:         '--config',
@@ -69,33 +115,6 @@ module ChefInit
                         ' chef server).',
       boolean:      true
 
-    option :bootstrap,
-      long:         '--bootstrap',
-      description:  'Run the chef client once and then exit with chef ' \
-                        'client\'s exit status.',
-      boolean:      true,
-      default:      false
-
-    option :onboot,
-      long:         '--onboot',
-      description:  'Run the chef client once and then keep alive until a ' \
-                        'POSIX signal is received.',
-      boolean:      true,
-      default:      false
-
-    option :remove_secure,
-      long:         '--[no-]remove-secure',
-      description:  'Do not remove secure credentials (validation key, encrypted ' \
-                        'data bag secret, etc) from image.',
-      boolean:      true,
-      default:      true
-
-    option :verify,
-      long:         '--verify',
-      description:  'Run integration tests to ensure that the installation of ' \
-                       'chef-container was successful.',
-      boolean:      true
-
     option :log_level,
       short:        '-l LEVEL',
       long:         '--log_level LEVEL',
@@ -107,11 +126,6 @@ module ChefInit
       long:         '--environment ENVIRONMENT',
       description:  'Set the Chef Environment for the container node.'
 
-    option :version,
-      short:        '-v',
-      long:         '--version',
-      description:  'Display the versions of the relevant Chef components.',
-      boolean:      true
 
     #
     # Creates a new CLI object
@@ -149,8 +163,10 @@ module ChefInit
       when config[:bootstrap]
         set_default_options
         launch_bootstrap
+      when config[:verify]
+        run_verification
       else
-        err 'You must pass in either the --onboot, --bootstrap ' \
+        err 'You must pass in either the --onboot, --bootstrap, --verify ' \
             'or --version flag.'
         exit false
       end
@@ -221,16 +237,34 @@ module ChefInit
       ChefInit::Log.info("Starting chef-client run...")
       ccr_exit_code = run_chef_client
 
-      ChefInit::Log.debug("Deleting client key...")
+      ChefInit::Log.info("Deleting client key...")
       delete_client_key
-      ChefInit::Log.debug("Removing node name file...")
+      ChefInit::Log.info("Removing node name file...")
       delete_node_name_file
-      ChefInit::Log.debug("Emptying secure folder...")
+      ChefInit::Log.info("Emptying secure folder...")
       empty_secure_directory if config[:remove_secure]
 
       shutdown_supervisor
 
       exit ccr_exit_code
+    end
+
+    #
+    # Run the BATS tests that come with chef-init.
+    #
+    def run_verification
+      # Grab path to directory where tests are kept
+      tests_dir = File.expand_path(File.join(__FILE__, "../../..", 'tests'))
+
+      # Execute the tests
+      test_suite = system_command(
+        "bats #{tests_dir}/local_bootstrap.bats",
+        timeout: 120,
+        live_stream: stdout,
+        env: { 'PATH' => path }
+      )
+      test_suite.error!
+      exit test_suite.exitstatus
     end
 
     private
