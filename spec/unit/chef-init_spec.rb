@@ -17,60 +17,33 @@
 
 require 'spec_helper'
 require 'chef-init'
-require 'chef/platform'
-require 'chef/node'
 
 describe ChefInit do
-
-  describe "`service` resource" do
-
-    context "when the container_service node attribute is present" do
-
-      it "sets the provider to ContainerService::Runit" do
-        node = Chef::Node.new
-        node.name("foo")
-        node.normal_attrs[:container_service][:foo][:command] = "/usr/bin/foo"
-        node.automatic_attrs[:platform] = "ubuntu"
-        node.automatic_attrs[:platform_version] = "12.04"
-
-        events = Chef::EventDispatch::Dispatcher.new
-        run_context = Chef::RunContext.new(node, {},  events)
-
-        service = Chef::Resource::Service.new("foo", run_context)
-
-        expect(service.provider).to eql(Chef::Provider::ContainerService::Runit)
-      end
-
-    end
-  end
-
-  describe ".node_name" do
-
-    context "when ENV variable is specified" do
+  describe '.node_name' do
+    context 'when ENV variable is specified' do
       before { ENV['CHEF_NODE_NAME'] = 'mynodename' }
       after { ENV['CHEF_NODE_NAME'] = nil }
 
-      it "should return the value of the environment variable" do
-        expect(ChefInit.node_name).to eql("mynodename")
+      it 'returns the value of the environment variable' do
+        expect(ChefInit.node_name).to eql('mynodename')
       end
     end
 
-    context "when .node_name file exists" do
+    context 'when .node_name file exists' do
       before do
-        allow(File).to receive(:exist?).with("/etc/chef/.node_name").and_return(true)
-        allow(File).to receive(:read).with("/etc/chef/.node_name").and_return("docker-demo-build")
+        allow(File).to receive(:exist?).with('/etc/chef/.node_name').and_return(true)
+        allow(File).to receive(:read).with('/etc/chef/.node_name').and_return('docker-demo-build')
       end
 
-      it "should return the contents of the file" do
-        expect(ChefInit.node_name).to eql("docker-demo-build")
+      it 'returns the contents of the file' do
+        expect(ChefInit.node_name).to eql('docker-demo-build')
       end
     end
 
-    context "by default" do
-      it "should return nil" do
+    context 'by default' do
+      it 'returns nil' do
         expect(ChefInit.node_name).to eql(nil)
       end
     end
-
   end
 end
