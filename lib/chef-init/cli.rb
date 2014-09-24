@@ -338,24 +338,16 @@ module ChefInit
     # @return [ChildProcess]
     #
     def launch_supervisor
-      process = ::ChildProcess.build(supervisor_launch_command)
-      process.io.inherit!
-      process.leader = true
-      process.start
-      process
-    end
-
-    #
-    # Returns the command to use to launch the process supervisor.
-    #
-    # @return [String]
-    #
-    def supervisor_launch_command
-      [
+      @supervisor = ::ChildProcess.build(
         "#{omnibus_embedded_bin_dir}/runsvdir",
         "-P", "#{omnibus_root}/service",
         "'log: #{ '.' * 395}'"
-      ]
+      )
+      @supervisor.io.inherit!
+      @supervisor.leader = true
+      @supervisor.environment['PATH'] = path
+      @supervisor.start
+      @supervisor
     end
 
     #
@@ -376,8 +368,14 @@ module ChefInit
       system_command("#{omnibus_embedded_bin_dir}/sv stop #{omnibus_root}/service/*")
       system_command("#{omnibus_embedded_bin_dir}/sv exit #{omnibus_root}/service/*")
 
-      ChefInit::Log.debug("Kill the primary supervisor")
-      @supervisor.stop
+      ChefInit::Log.debug("Send HUP to the Supervisor")
+      ::Process.kill('HUP', @supervisor.pid) # Gently kill the process
+
+      begin
+        @supervisor.poll_for_exit(10)
+      rescue ChildProcess::TimeoutError
+        @supervisor.stop # tries increasingly harsher methods to kill the supervisor.
+      end
 
       ChefInit::Log.debug("Shutdown complete...")
     end
@@ -386,7 +384,11 @@ module ChefInit
     # Run the chef-client
     #
     def run_chef_client
-      ccr = system_command(chef_client_command)
+      ccr = system_command(
+        chef_client_command,
+        live_stream: stdout,
+        env: {'PATH' => path}
+      )
       ccr.exitstatus
     end
 

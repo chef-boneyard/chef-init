@@ -223,6 +223,7 @@ class Chef
           content = "#!/bin/sh\n"
           content += "exec 2>&1\n"
           content += "exec #{@command} 2>&1"
+          content
         end
 
         #
@@ -235,9 +236,9 @@ class Chef
           content = "#!/bin/sh\n"
           case @log_type
           when :stdout
-            content += "exec chef-init-logger --service-name #{new_resource.service_name} --log-destination stdout"
+            content += "exec chef-init-logger --service-name #{new_resource.service_name} --log-destination stdout\n"
           when :file
-            content += "exec svlogd -tt /var/log/#{new_resource.service_name}"
+            content += "exec svlogd -tt /var/log/#{new_resource.service_name}\n"
           end
           content
         end
