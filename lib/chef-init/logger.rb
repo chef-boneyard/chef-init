@@ -62,10 +62,9 @@ module ChefInit
       self.source = input
       self.destination = logger.new
 
-      loop do
-        source.each do |line|
-          destination.write "[#{service_name}] #{line}"
-        end
+      input.each do |line|
+        line.chomp!
+        destination.write "[#{service_name}] #{line}"
       end
     end
 
@@ -85,7 +84,7 @@ module ChefInit
     # @return [Constant]
     #
     def input
-      $stdin
+      STDIN
     end
 
     #
