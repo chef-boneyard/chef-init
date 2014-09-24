@@ -34,7 +34,7 @@ end
 desc 'Build chef-init-dev image and enter it'
 task :build_and_enter do
   Rake::Task['build_dev'].invoke
-  system `docker run -i -t chef-init-dev /bin/bash`
+  exec 'docker run -i -t chef-init-dev /bin/bash'
 end
 
 task :default => :spec
