@@ -81,7 +81,7 @@ describe ChefInit::CLI do
         expect(cli).to receive(:exit).with(false)
         cli.run
         expect(stderr).to eql('You must pass in either the --onboot, ' \
-          "--bootstrap or --version flag.\n")
+          "--bootstrap, --verify or --version flag.\n")
       end
     end
 

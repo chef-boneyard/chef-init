@@ -26,6 +26,6 @@ Gem::Specification.new do |s|
 
   s.add_development_dependency 'rake', '~> 10.1.0'
   %w( rspec rspec-core rspec-expectations rspec-mocks).each do |rspec|
-    s.add_development_dependency rspec, '~> 2.14.0'
+    s.add_development_dependency rspec, '~> 3.1'
   end
 end
