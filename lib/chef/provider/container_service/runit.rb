@@ -46,7 +46,7 @@ class Chef
 
           options = node['container_service'][new_resource.service_name]
           @command = options['command']
-          @log_type = options['log_type'].nil? ? :stdout : options['log_type'].to_sym
+          @log_type = :file
         end
 
         def load_current_resource
