@@ -15,8 +15,8 @@
 # limitations under the License.
 #
 require 'mixlib/cli'
+require 'logger'
 require 'chef-init/helpers'
-require 'chef-init/loggers'
 require 'chef/mixin/convert_to_class_name'
 
 module ChefInit
@@ -59,12 +59,15 @@ module ChefInit
     #
     def run
       parse_options(@argv)
-      self.source = input
-      self.destination = logger.new
+      logger = ::Logger.new(output)
+      logger.progname = service_name
+      logger.level = ::Logger::INFO
+      logger.formatter = proc do |severity, datetime, progname, msg|
+        "[#{progname}] #{msg}\n"
+      end
 
       input.each do |line|
-        line.chomp!
-        destination.write "[#{service_name}] #{line}"
+        logger.info line.chomp!
       end
     end
 
@@ -84,22 +87,16 @@ module ChefInit
     # @return [Constant]
     #
     def input
-      STDIN
+      $stdin
     end
 
     #
-    # Returns the class name for the logging implementation that matches the
-    # log destination setting.
+    # Returns where the Logger should log to.
     #
-    # @return [Object]
-    #
-    def logger
+    def output
       case config[:log_destination]
       when 'stdout'
-        ChefInit::Loggers::Stdout
-      else
-        raise ChefInit::Exceptions::InvalidLogDestination, "Can not find an "\
-          "implementation for the log destination `#{config[:log_destination]}`."
+        stdout
       end
     end
   end
