@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-require 'mixlib/cli'
 require 'logger'
+require 'mixlib/cli'
 require 'chef-init/helpers'
 require 'chef/mixin/convert_to_class_name'
 

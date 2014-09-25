@@ -16,6 +16,7 @@
 #
 
 require 'spec_helper'
+require 'chef-init/exceptions'
 
 describe ChefInit::Exceptions do
   exception_to_super_class = {

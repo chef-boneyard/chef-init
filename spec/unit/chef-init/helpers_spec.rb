@@ -16,6 +16,7 @@
 #
 
 require 'spec_helper'
+require 'chef-init/helpers'
 
 class FakeClass
   include ChefInit::Helpers

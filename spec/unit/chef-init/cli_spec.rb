@@ -51,6 +51,17 @@ describe ChefInit::CLI do
   end
 
   describe '#run' do
+    describe 'when given no arguments or options' do
+      let(:argv) { [] }
+
+      it 'alerts that you must pass in a flag or arguments' do
+        expect(cli).to receive(:exit).with(false)
+        cli.run
+        expect(stderr).to eql('You must pass in either the --onboot, ' \
+          "--bootstrap, --verify or --version flag.\n")
+      end
+    end
+
     describe 'when onboot flag is passed' do
       let(:argv) { %w[ --onboot ] }
       before { cli.config[:onboot] = true }
@@ -75,16 +86,6 @@ describe ChefInit::CLI do
       end
     end
 
-    describe 'when given no arguments or options' do
-      let(:argv) { [] }
-      it 'alerts that you must pass in a flag or arguments' do
-        expect(cli).to receive(:exit).with(false)
-        cli.run
-        expect(stderr).to eql('You must pass in either the --onboot, ' \
-          "--bootstrap, --verify or --version flag.\n")
-      end
-    end
-
     describe 'when version flag is passed' do
       let(:argv) { %w[ -v ] }
       let(:version_message) { "ChefInit Version: #{ChefInit::VERSION}\n" }
@@ -93,6 +94,15 @@ describe ChefInit::CLI do
         expect(cli).to receive(:exit).with(true)
         cli.run
         expect(stdout).to eql(version_message)
+      end
+    end
+
+    describe 'when verify flag is passed' do
+      let(:argv) { %w[ --verify ] }
+
+      it 'calls the verification method' do
+        expect(cli).to receive(:run_verification)
+        cli.run
       end
     end
 
@@ -151,7 +161,7 @@ describe ChefInit::CLI do
   describe '#launch_onboot' do
     let(:supervisor) { cli.supervisor }
     let(:chef_client) { cli.chef_client }
-    
+
     it 'starts supervisor, runs chef-client, cleans up and waits' do
       expect(supervisor).to receive(:launch)
       expect(chef_client).to receive(:run)
@@ -192,6 +202,29 @@ describe ChefInit::CLI do
         expect(cli).to receive(:exit).with(exitcode)
         cli.launch_bootstrap
       end
+    end
+  end
+
+  describe '#run_verification' do
+    let(:bats_test_dir) { '/tmp/test' }
+    let(:path) { '/opt/chef/bin' }
+    let(:command) { double('Mixlib::Shellout Object', exitstatus: 0) }
+
+    before do
+      allow(cli).to receive(:bats_test_dir).and_return(bats_test_dir)
+      allow(cli).to receive(:path).and_return(path)
+    end
+
+    it 'executes the bats tests' do
+      expect(cli).to receive(:system_command).with(
+        "bats #{bats_test_dir}/local_onboot.bats",
+        timeout: 240,
+        live_stream: $stdout,
+        env: { 'PATH' => path }
+      ).and_return(command)
+      expect(command).to receive(:error!)
+      expect(cli).to receive(:exit).with(0)
+      cli.run_verification
     end
   end
 end
