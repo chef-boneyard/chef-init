@@ -17,7 +17,7 @@
 
 require 'chef-init/version'
 require 'chef-init/helpers'
-require 'childprocess'
+require 'chef-init/supervisor'
 require 'mixlib/cli'
 
 module ChefInit
@@ -139,6 +139,7 @@ module ChefInit
     def initialize(argv, max_retries=5)
       @argv = argv
       @max_retries = max_retries
+      @supervisor = ChefInit::Supervisor.new
       super()
     end
 
@@ -201,23 +202,18 @@ module ChefInit
     # it is responsible for. After that happens, exit with 0.
     #
     def launch_onboot
-      trap("KILL") do
-        ChefInit::Log.info("Received SIGKILL - shutting down supervisor")
-        shutdown_supervisor
-      end
-
       trap("INT") do
         ChefInit::Log.info("Received SIGINT - shutting down supervisor")
-        shutdown_supervisor
+        @supervisor.shutdown
       end
 
       trap("TERM") do
         ChefInit::Log.info("Received SIGTERM - shutting down supervisor")
-        shutdown_supervisor
+        @supervisor.shutdown
       end
 
       ChefInit::Log.info("Starting Supervisor...")
-      launch_supervisor
+      @supervisor.launch
 
       ChefInit::Log.info("Starting chef-client run...")
       run_chef_client
@@ -225,7 +221,7 @@ module ChefInit
       ChefInit::Log.info("Deleting validation key")
       delete_validation_key
 
-      wait_for_supervisor
+      @supervisor.wait
 
       exit true
     end
@@ -237,7 +233,7 @@ module ChefInit
     #
     def launch_bootstrap
       ChefInit::Log.info("Starting Supervisor...")
-      launch_supervisor
+      @supervisor.launch
 
       ChefInit::Log.info("Starting chef-client run...")
       ccr_exit_code = run_chef_client
@@ -249,7 +245,7 @@ module ChefInit
       ChefInit::Log.info("Emptying secure folder...")
       empty_secure_directory if config[:remove_secure]
 
-      shutdown_supervisor
+      @supervisor.shutdown
 
       exit ccr_exit_code
     end
@@ -335,54 +331,6 @@ module ChefInit
       config[:local_mode] ||= false
       config[:config_file] ||= '/etc/chef/client.rb'
       config[:json_attribs] ||= '/etc/chef/first-boot.json'
-    end
-
-    #
-    # Creates and returns a ChildProcess object for the Supervisor
-    #
-    # @return [ChildProcess]
-    #
-    def launch_supervisor
-      @supervisor = ::ChildProcess.build(
-        "#{omnibus_embedded_bin_dir}/runsvdir",
-        "-P", "#{omnibus_root}/service",
-        "'log: #{ '.' * 395}'"
-      )
-      @supervisor.io.inherit!
-      @supervisor.leader = true
-      @supervisor.environment['PATH'] = path
-      @supervisor.start
-      @supervisor
-    end
-
-    #
-    # Wait for the Supervisor to exit
-    #
-    def wait_for_supervisor
-      @supervisor.wait
-    end
-
-    #
-    # Shuts down the supervisor process as well as all the processes
-    # that the supervisor is responsible for.
-    #
-    def shutdown_supervisor
-      ChefInit::Log.debug("Waiting for services to stop...")
-
-      ChefInit::Log.debug("Exit all the services")
-      system_command("#{omnibus_embedded_bin_dir}/sv stop #{omnibus_root}/service/*")
-      system_command("#{omnibus_embedded_bin_dir}/sv exit #{omnibus_root}/service/*")
-
-      ChefInit::Log.debug("Send HUP to the Supervisor")
-      ::Process.kill('HUP', @supervisor.pid) # Gently kill the process
-
-      begin
-        @supervisor.poll_for_exit(10)
-      rescue ChildProcess::TimeoutError
-        @supervisor.stop # tries increasingly harsher methods to kill the supervisor.
-      end
-
-      ChefInit::Log.debug("Shutdown complete...")
     end
 
     #

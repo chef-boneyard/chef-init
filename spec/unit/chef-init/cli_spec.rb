@@ -149,11 +149,12 @@ describe ChefInit::CLI do
   end
 
   describe '#launch_onboot' do
+    let(:supervisor) { cli.supervisor }
     it 'starts supervisor, runs chef-client, cleans up and waits' do
-      expect(cli).to receive(:launch_supervisor)
+      expect(supervisor).to receive(:launch)
       expect(cli).to receive(:run_chef_client)
       expect(cli).to receive(:delete_validation_key)
-      expect(cli).to receive(:wait_for_supervisor)
+      expect(supervisor).to receive(:wait)
       expect(cli).to receive(:exit)
       cli.launch_onboot
     end
@@ -161,27 +162,29 @@ describe ChefInit::CLI do
 
   describe '#launch_bootstrap' do
     let(:exitcode) { 0 }
+    let(:supervisor) { cli.supervisor }
 
     it 'starts supervisor, runs chef-client, cleans up and exits' do
-      expect(cli).to receive(:launch_supervisor)
+      expect(supervisor).to receive(:launch)
       expect(cli).to receive(:run_chef_client).and_return(exitcode)
       expect(cli).to receive(:delete_client_key)
       expect(cli).to receive(:delete_node_name_file)
       expect(cli).to receive(:empty_secure_directory)
-      expect(cli).to receive(:shutdown_supervisor)
+      expect(supervisor).to receive(:shutdown)
       expect(cli).to receive(:exit).with(exitcode)
       cli.launch_bootstrap
     end
 
     context 'when --no-delete-secure is specified' do
       before { cli.config[:remove_secure] = false }
+
       it 'does not delete the secure directory' do
-        expect(cli).to receive(:launch_supervisor)
+        expect(supervisor).to receive(:launch)
         expect(cli).to receive(:run_chef_client).and_return(exitcode)
         expect(cli).to receive(:delete_client_key)
         expect(cli).to receive(:delete_node_name_file)
         expect(cli).not_to receive(:empty_secure_directory)
-        expect(cli).to receive(:shutdown_supervisor)
+        expect(supervisor).to receive(:shutdown)
         expect(cli).to receive(:exit).with(exitcode)
         cli.launch_bootstrap
       end
