@@ -150,9 +150,11 @@ describe ChefInit::CLI do
 
   describe '#launch_onboot' do
     let(:supervisor) { cli.supervisor }
+    let(:chef_client) { cli.chef_client }
+    
     it 'starts supervisor, runs chef-client, cleans up and waits' do
       expect(supervisor).to receive(:launch)
-      expect(cli).to receive(:run_chef_client)
+      expect(chef_client).to receive(:run)
       expect(cli).to receive(:delete_validation_key)
       expect(supervisor).to receive(:wait)
       expect(cli).to receive(:exit)
@@ -163,10 +165,12 @@ describe ChefInit::CLI do
   describe '#launch_bootstrap' do
     let(:exitcode) { 0 }
     let(:supervisor) { cli.supervisor }
+    let(:chef_client) { cli.chef_client }
+    before { allow(chef_client).to receive(:exit_code).and_return(exitcode) }
 
     it 'starts supervisor, runs chef-client, cleans up and exits' do
       expect(supervisor).to receive(:launch)
-      expect(cli).to receive(:run_chef_client).and_return(exitcode)
+      expect(chef_client).to receive(:run)
       expect(cli).to receive(:delete_client_key)
       expect(cli).to receive(:delete_node_name_file)
       expect(cli).to receive(:empty_secure_directory)
@@ -180,7 +184,7 @@ describe ChefInit::CLI do
 
       it 'does not delete the secure directory' do
         expect(supervisor).to receive(:launch)
-        expect(cli).to receive(:run_chef_client).and_return(exitcode)
+        expect(chef_client).to receive(:run)
         expect(cli).to receive(:delete_client_key)
         expect(cli).to receive(:delete_node_name_file)
         expect(cli).not_to receive(:empty_secure_directory)

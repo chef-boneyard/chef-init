@@ -18,6 +18,7 @@
 require 'chef-init/version'
 require 'chef-init/helpers'
 require 'chef-init/supervisor'
+require 'chef-init/provisioner'
 require 'mixlib/cli'
 
 module ChefInit
@@ -44,7 +45,7 @@ module ChefInit
   #
   # chef-init --verify
   #    The +verify+ parameters will run the BATS tests the come with the Gem.
-  #    These tests should be used for functional testing. 
+  #    These tests should be used for functional testing.
   #
   class CLI
     include Mixlib::CLI
@@ -140,6 +141,7 @@ module ChefInit
       @argv = argv
       @max_retries = max_retries
       @supervisor = ChefInit::Supervisor.new
+      @chef_client = ChefInit::Provisioner.new
       super()
     end
 
@@ -216,7 +218,7 @@ module ChefInit
       @supervisor.launch
 
       ChefInit::Log.info("Starting chef-client run...")
-      run_chef_client
+      @chef_client.run(chef_client_options)
 
       ChefInit::Log.info("Deleting validation key")
       delete_validation_key
@@ -236,7 +238,7 @@ module ChefInit
       @supervisor.launch
 
       ChefInit::Log.info("Starting chef-client run...")
-      ccr_exit_code = run_chef_client
+      @chef_client.run(chef_client_options)
 
       ChefInit::Log.info("Deleting client key...")
       delete_client_key
@@ -247,7 +249,7 @@ module ChefInit
 
       @supervisor.shutdown
 
-      exit ccr_exit_code
+      exit @chef_client.exit_code
     end
 
     #
@@ -260,7 +262,7 @@ module ChefInit
       # Execute the tests
       test_suite = system_command(
         "bats #{tests_dir}/local_bootstrap.bats",
-        timeout: 120,
+        timeout: 240,
         live_stream: stdout,
         env: { 'PATH' => path }
       )
@@ -334,39 +336,27 @@ module ChefInit
     end
 
     #
-    # Run the chef-client
-    #
-    def run_chef_client
-      ccr = system_command(
-        chef_client_command,
-        live_stream: stdout,
-        env: {'PATH' => path}
-      )
-      ccr.exitstatus
-    end
-
-    #
     # Returns the proper chef client command to use when running chef-client.
     # This value is calculated based on the options that were passed in to the
     # CLI.
     #
     # @return [String]
     #
-    def chef_client_command
-      command = ['chef-client']
-      command << "-c #{config[:config_file]}"
-      command << "-j #{config[:json_attribs]}"
-      command << "-l #{config[:log_level]}"
+    def chef_client_options
+      command = []
+      command.concat ['--config', config[:config_file]]
+      command.concat ['--json-attributes', config[:json_attribs]]
+      command.concat ['--log_level', config[:log_level]]
 
       if config[:local_mode]
-        command << '-z'
+        command << '--local-mode'
       end
 
       unless config[:environment].nil?
-        command << "-E #{config[:environment]}"
+        command.concat ['--environment', config[:environment]]
       end
 
-      command.join(' ')
+      command
     end
 
     #
