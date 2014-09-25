@@ -77,7 +77,7 @@ class Chef
           service_dir.run_action(:create)
 
           Chef::Log.debug("Creating down file for #{new_resource.service_name}")
-          down_file.run_action(:create)
+          down_file.run_action(:create) unless @current_resource.enabled
 
           Chef::Log.debug("Creating run script for #{new_resource.service_name}")
           run_script.run_action(:create)
