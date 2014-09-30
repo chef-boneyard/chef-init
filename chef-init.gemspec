@@ -20,12 +20,10 @@ Gem::Specification.new do |s|
   s.test_files    = s.files.grep(%r{^(test|spec|features)/})
   s.require_paths = ['lib']
 
-  s.add_dependency 'chef', '>= 11.12.8'
-  s.add_dependency "docker-api", '~> 1.13'
-  s.add_dependency 'childprocess', '~> 0.5.3'
+  s.add_dependency 'chef', '= 12.0.0.alpha.2'
 
   s.add_development_dependency 'rake', '~> 10.1.0'
   %w( rspec rspec-core rspec-expectations rspec-mocks).each do |rspec|
-    s.add_development_dependency rspec, '~> 3.1'
+    s.add_development_dependency rspec, '~> 2.14.0'
   end
 end

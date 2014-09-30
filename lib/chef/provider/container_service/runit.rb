@@ -22,13 +22,11 @@ require 'chef/provider/file'
 require 'chef/resource/directory'
 require 'chef/provider/directory'
 require 'chef/provider/container_service'
-require 'chef-init/helpers'
 
 class Chef
   class Provider
     class ContainerService
       class Runit < Chef::Provider::ContainerService
-        include ChefInit::Helpers
 
         attr_reader :command
         attr_reader :log_type # stdout, file
@@ -111,7 +109,7 @@ class Chef
         #
         def disable_service
           down_file.run_action(:create)
-          shell_out("#{sv_bin} down #{service_dir_name}")
+          shell_out("sv down #{service_dir_name}")
           Chef::Log.debug("#{new_resource} down")
         end
 
@@ -121,28 +119,28 @@ class Chef
         #
         def start_service
           wait_for_service_enable
-          shell_out!("#{sv_bin} start #{service_dir_name}")
+          shell_out!("sv start #{service_dir_name}")
         end
 
         #
         # Stop the runit service
         #
         def stop_service
-          shell_out!("#{sv_bin} stop #{service_dir_name}")
+          shell_out!("sv stop #{service_dir_name}")
         end
 
         #
         # Restart the runit service
         #
         def restart_service
-          shell_out!("#{sv_bin} restart #{service_dir_name}")
+          shell_out!("sv restart #{service_dir_name}")
         end
 
         #
         # Reload the runit service
         #
         def reload_service
-          shell_out!("#{sv_bin} force-reload #{service_dir_name}")
+          shell_out!("sv force-reload #{service_dir_name}")
         end
 
         #
@@ -152,7 +150,7 @@ class Chef
         # @return [Boolean]
         #
         def running?
-          cmd = shell_out("#{sv_bin} status #{service_dir_name}")
+          cmd = shell_out("sv status #{service_dir_name}")
           (cmd.stdout.match(/^run:/) && cmd.exitstatus == 0) ? true : false
         end
 
@@ -192,7 +190,7 @@ class Chef
         # @return [String]
         #
         def service_dir_name
-          ::File.join(omnibus_root, 'service', new_resource.service_name)
+          ::File.join('/opt/chef/service', new_resource.service_name)
         end
 
         #
@@ -200,17 +198,7 @@ class Chef
         #
         # @return [String]
         def staging_dir_name
-          ::File.join(omnibus_root, 'sv', new_resource.service_name)
-        end
-
-        #
-        # Returns the path to the +sv+ binary that is used to send commands to
-        # the runit process.
-        #
-        # @return [String]
-        #
-        def sv_bin
-          ::File.join(omnibus_embedded_bin_dir, 'sv')
+          ::File.join('/opt/chef/sv', new_resource.service_name)
         end
 
         #
@@ -272,7 +260,7 @@ class Chef
         #
         def service_dir
           return @service_dir unless @service_dir.nil?
-          @service_dir = Chef::Resource::Directory.new(::File.join(omnibus_root, 'service'), run_context)
+          @service_dir = Chef::Resource::Directory.new('/opt/chef/service', run_context)
           @service_dir.recursive(true)
           @service_dir.mode(00755)
           @service_dir

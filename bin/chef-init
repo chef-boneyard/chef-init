@@ -17,6 +17,7 @@
 #
 
 $:.unshift(File.expand_path(File.join(File.dirname(__FILE__), "..", "lib")))
-require 'chef-init/cli'
+require 'chef'
+require 'chef/application/init'
 
-ChefInit::CLI.new(ARGV.clone).run
+Chef::Application::Init.new.run

@@ -21,7 +21,7 @@ require 'chef/provider/container_service/runit'
 
 describe Chef::Provider::ContainerService::Runit do
   def runit_signal(action)
-    "/opt/chef/embedded/bin/sv #{action} /opt/chef/service/foo"
+    "sv #{action} /opt/chef/service/foo"
   end
 
   let(:log_type) { 'stdout' }
@@ -319,12 +319,6 @@ describe Chef::Provider::ContainerService::Runit do
   describe '#staging_dir_name' do
     it 'returns the staging directory name' do
       expect(provider.staging_dir_name).to eql('/opt/chef/sv/foo')
-    end
-  end
-
-  describe '#sv_bin' do
-    it "returns the sv binary location" do
-      expect(provider.sv_bin).to eql('/opt/chef/embedded/bin/sv')
     end
   end
 

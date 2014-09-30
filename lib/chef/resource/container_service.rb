@@ -65,17 +65,17 @@ class Chef
           if @run_context.node.key?("container_service")
             if @run_context.node["container_service"].key?(@service_name)
               Chef::Log.debug("container_service command found for service[#{@service_name}].")
-              return true
+              true
             else
               Chef::Log.debug("container_service command NOT found for service[#{@service_name}].")
-              return false
+              false
             end
           else
             Chef::Log.debug("No container_service commands found.")
-            return false
+            false
           end
         else
-          return false
+          false
         end
       end
     end

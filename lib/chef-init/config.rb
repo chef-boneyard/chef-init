@@ -1,5 +1,5 @@
 #
-# Copyright:: Copyright (c) 2014 Chef Software Inc.
+# Copyright:: Copyright (c) 2012-2014 Chef Software, Inc.
 # License:: Apache License, Version 2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,9 +15,18 @@
 # limitations under the License.
 #
 
-module ChefInit
-  module Exceptions
-    class InvalidLogDestination < RuntimeError; end
-    class LoggerNotImplemented < RuntimeError; end
+class Chef
+  class Config
+
+    # Set Init application settings
+    default :bootstrap, false
+    default :run_chef_client, true
+
+    default :supervisor_start_command, 'runsvdir -P /opt/chef/service'
+    default :supervisor_pid_file, '/tmp/supervisor.pid'
+
+    default :remove_secure_directory, true
+    default :secure_directory, PathHelper.join(config_dir, 'secure')
+
   end
 end
