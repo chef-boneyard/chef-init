@@ -1,6 +1,6 @@
 require 'chef-init'
 
-chef_server_url             'http://127.0.0.1:8889'
+chef_server_url             'http://localhost:8889'
 validation_client_name      'chef-validator'
 validation_key              '/tmp/chef_data/secure/validation.pem'
 client_key                  '/tmp/chef_data/secure/client.pem'

@@ -18,25 +18,33 @@
 
 load helpers
 
-@test "Failing chef-client run causes chef-init --bootstrap to exit with non-zero" {
-  run chef_init_bootstrap "zero" "failing"
+setup(){
+  refresh_tmpdata
+}
+
+teardown(){
+  teardown_common
+}
+
+@test "Failing chef-client run causes chef-init --bootstrap running in local-mode to exit with non-zero" {
+  run chef_init_bootstrap --runlist "recipe[foobar]" --local-mode
   assert_failure
   assert_output_contains "No such cookbook: foobar"
   assert_cleanup_success
 }
 
-@test "Successful chef-client run causes chef-init --bootstrap to exit with zero" {
-  run chef_init_bootstrap "zero" "passing"
+@test "Successful chef-client run causes chef-init --bootstrap running in local-mode to exit with zero" {
+  run chef_init_bootstrap --runlist "recipe[chef-init-test]" --local-mode
   assert_success
   assert_output_contains "Chef Run complete"
   assert_cleanup_success
 }
 
 @test "chef-init --bootstrap supports proper convergence" {
-  run chef_init_bootstrap "zero" "passing" # run 1
+  run chef_init_bootstrap --runlist "recipe[chef-init-test]" --local-mode
   assert_success
   assert_output_contains "Chef Run complete"
-  run chef_init_bootstrap "zero" "passing" # run 2
+  run chef_init_bootstrap --runlist "recipe[chef-init-test]" --local-mode
   assert_success
   assert_output_contains "Chef Run complete"
   assert_cleanup_success

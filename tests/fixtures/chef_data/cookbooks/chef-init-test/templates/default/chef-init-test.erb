@@ -1,4 +1,4 @@
-#!/usr/bin/env ruby
+#!/bin/sh
 #
 # Copyright:: Copyright (c) 2014 Chef Software Inc.
 # License:: Apache License, Version 2.0
@@ -16,15 +16,8 @@
 # limitations under the License.
 #
 
-require 'timeout'
-
-# Set a trap for ctrl-C right away so we don't surface interrupt exceptions inside of rubygems or whatever.
-Kernel.trap(:INT) { print("\n"); exit 1 }
-
-# Set process name to filename (shows up in ps, top)
-$0 = File.basename(__FILE__)
-
-loop do
-  puts '<%= @log_message %>'
+while true
+do
+  echo "<%= @log_message %>"
   sleep 5
-end
+done

@@ -15,77 +15,120 @@
 # limitations under the License.
 #
 
+if [ "$FIXTURE_ROOT" != "$BATS_TEST_DIRNAME/fixtures" ]; then
+  export FIXTURE_ROOT="$BATS_TEST_DIRNAME/fixtures"
+  export CHEF_INIT_LOG="$BATS_TMPDIR/chef-init-log"
+  export CHEF_SERVER_LOG="$BATS_TMPDIR/chef-server-log"
+fi
+
 chef_init_bootstrap() {
-  chef-init --bootstrap --config "$BATS_TEST_DIRNAME/fixtures/$1.rb" --json-attributes "$BATS_TEST_DIRNAME/fixtures/$2-first-boot.json"
+  chef-init --bootstrap --config "$FIXTURE_ROOT/client.rb" "$@" --node-name tester
 }
 
 #
-# Start the chef-init --onboot process
+# Start the chef-init --onboot process in the background
 #
 # @param [Stirng] $1
 #   Which configuration file to use: zero or client
+# @param [String] $2
+#   Which first-boot.json to use: passing or failing
 #
-start_chef_init() {
-  chef-init --onboot --config $BATS_TEST_DIRNAME/fixtures/$1.rb --json-attributes $BATS_TEST_DIRNAME/fixtures/passing-first-boot.json
+chef_init() {
+  chef-init --config "$FIXTURE_ROOT/client.rb" "$@" >"$CHEF_INIT_LOG" &
+  echo "$!" >"$BATS_TMPDIR/chef-init.pid"
+  sleep 5
 }
 
 #
-# Kill the chef-init --onboot process
+# Stop the chef-init --onboot process that is running in the background
 #
 stop_chef_init() {
-  pkill 'chef-init'
+  chef_init_pid=$(cat "$BATS_TMPDIR/chef-init.pid")
+  kill -SIGTERM "$chef_init_pid"
+  wait "$chef_init_pid" 2>/dev/null
+  rm -rf "$BATS_TMPDIR/chef-init.pid"
 }
 
 #
 # Start the temporary Chef Server
 #
 start_chef_server() {
-  chef-zero
-}
-
-#
-# Seed the temporary Chef Server with data
-#
-seed_chef_server() {
-  knife upload $BATS_TEST_DIRNAME/fixtures/chef_data
+  cp -R "$FIXTURE_ROOT/chef_data" "$BATS_TMPDIR/chef_data"
+  knife serve --chef-repo-path "$BATS_TMPDIR/chef_data" \
+    --chef-zero-host "127.0.0.1" \
+    --chef-zero-port "8889" \
+    --config "$FIXTURE_ROOT/client.rb" >"$CHEF_SERVER_LOG" &
+  echo "$!" >"$BATS_TMPDIR/chef-server.pid"
 }
 
 #
 # Stop the temporary Chef Server
+#rm -rf "$BATS_TMPDIR/chef_data"
 #
 stop_chef_server() {
-  pkill 'chef-zero'
+  chef_server_pid=$(cat "$BATS_TMPDIR/chef-server.pid")
+  kill -SIGINT "$chef_server_pid"
+  wait "$chef_server_pid" 2>/dev/null
+  rm -rf "$BATS_TMPDIR/chef-server.pid"
 }
 
 #
-# Return whether the given process is running
+# Return whether the given process is running.
 #
 # @param [String] $1
 #   The name of the process to look for.
 #
 find_process() {
-  ps -ef | grep "$1"
+  # encapsulate last character in [] to ignore the grep process
+  local name=$(echo "$1" | sed "s/\(.\)$/[\1]/")
+  echo "Looking for $name"
+  echo "------Process Table------"
+  ps -ef
+  ps -ef | grep "$name"
+}
+
+refresh_tmpdata() {
+  rm -rf "$BATS_TMPDIR/chef_data"
+  cp -R "$FIXTURE_ROOT/chef_data" "$BATS_TMPDIR/chef_data"
 }
 
 #
 # Teardown tasks
-#   * Cleanup /opt/chef/service
 #
-teardown() {
+teardown_common() {
+  pkill "chef-init --bootstrap"
+  pkill "chef-init --onboot"
   rm -rf /opt/chef/service/*
   rm -rf /opt/chef/sv/*
+  #rm -rf "$CHEF_INIT_LOG"
+  rm -rf /var/log/chef-init*
+}
+
+#
+# @param [Stirng] $1
+#   The location of the file
+# @param [String] $2
+#   The contents to look for
+#
+assert_file_contains() {
+  local content=$(cat "$1")
+  local expected="$2"
+  echo "$content" | $(type -p ggrep grep | head -1) -F "$expected" >/dev/null || {
+    { echo "expected $1 to contain $expected"
+      echo "actual: $content"
+    } | flunk
+  }
 }
 
 #
 # Assert that none of the test processes are running
 #
 assert_cleanup_success() {
-  refute_process_running "runsvdi[r] -P /opt/chef/service"
-  refute_process_running "runsv chef-init-test-aut[o]"
-  refute_process_running "chef-init-logger --service-name chef-init-test-aut[o]"
-  refute_process_running "chef-init-test-aut[o]"
-  refute_process_running "runsv chef-init-test-manua[l]"
-  refute_process_running "chef-init-test-manua[l]"
+  refute_process_running "runsvdir -P /opt/chef/service"
+  refute_process_running "runsv chef-init-test-auto"
+  refute_process_running "chef-init-test-auto"
+  refute_process_running "runsv chef-init-test-manual"
+  refute_process_running "chef-init-test-manual"
 }
 
 
@@ -100,13 +143,21 @@ refute_process_running() {
   assert_failure
 }
 
+#
+# Assert that the process is running
+#
+# @param [String] $1
+#   The name of the process
+#
+assert_process_running() {
+  run find_process "$1"
+  assert_success
+}
 
 ############
 # The following assertion helpers were taken from sstephenson/ruby-build
 ############
 
-#
-# Assert
 assert() {
   if ! "$@"; then
     flunk "failed: $@"

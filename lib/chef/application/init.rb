@@ -22,6 +22,7 @@ require 'chef/config_fetcher'
 require 'chef/handler/error_report'
 require 'chef/workstation_config_loader'
 
+require 'chef/mixin/shell_out'
 require 'chef-init/config'
 require 'chef-init/version'
 
@@ -51,6 +52,7 @@ require 'chef-init/version'
 #    These tests should be used for functional testing.
 #
 class Chef::Application::Init < Chef::Application
+  include Chef::Mixin::ShellOut
 
   # Mimic self_pipe sleep from Unicorn to capture signals safely
   SELF_PIPE = []
@@ -69,7 +71,7 @@ class Chef::Application::Init < Chef::Application
     description:  'Run integration tests to verify installation was successful',
     boolean:      true,
     proc:         lambda {|v|
-      test_dir = File.expand_path(File.join(__FILE__, "../../..", 'tests'))
+      test_dir = File.expand_path(File.join(__FILE__, "../../../..", 'tests'))
       ::Kernel.exec("bats #{test_dir}/local_bootstrap.bats")
     }
 
@@ -119,39 +121,186 @@ class Chef::Application::Init < Chef::Application
   # Chef Client related options
   #
   option :config_file,
-    short:        "-c CONFIG",
-    long:         "--config CONFIG",
-    description:  "The configuration file to use"
+    :short => "-c CONFIG",
+    :long  => "--config CONFIG",
+    :description => "The configuration file to use"
+
+  option :formatter,
+    :short        => "-F FORMATTER",
+    :long         => "--format FORMATTER",
+    :description  => "output format to use",
+    :proc         => lambda { |format| Chef::Config.add_formatter(format) }
+
+  option :force_logger,
+    :long         => "--force-logger",
+    :description  => "Use logger output instead of formatter output",
+    :boolean      => true,
+    :default      => false
+
+  option :force_formatter,
+    :long         => "--force-formatter",
+    :description  => "Use formatter output instead of logger output",
+    :boolean      => true,
+    :default      => false
+
+  option :color,
+    :long         => '--[no-]color',
+    :boolean      => true,
+    :default      => !Chef::Platform.windows?,
+    :description  => "Use colored output, defaults to false on Windows, true otherwise"
 
   option :log_level,
-    short:        "-l LEVEL",
-    long:         "--log_level LEVEL",
-    description:  "Set the log level (debug, info, warn, error, fatal)",
-    proc:         lambda { |l| l.to_sym }
+    :short        => "-l LEVEL",
+    :long         => "--log_level LEVEL",
+    :description  => "Set the log level (debug, info, warn, error, fatal)",
+    :proc         => lambda { |l| l.to_sym }
 
   option :log_location,
-    short:        "-L LOGLOCATION",
-    long:         "--logfile LOGLOCATION",
-    description:  "Set the log file location, defaults to STDOUT - recommended for daemonizing",
-    proc:         nil
+    :short        => "-L LOGLOCATION",
+    :long         => "--logfile LOGLOCATION",
+    :description  => "Set the log file location, defaults to STDOUT - recommended for daemonizing",
+    :proc         => nil
+
+  option :user,
+    :short => "-u USER",
+    :long => "--user USER",
+    :description => "User to set privilege to",
+    :proc => nil
+
+  option :group,
+    :short => "-g GROUP",
+    :long => "--group GROUP",
+    :description => "Group to set privilege to",
+    :proc => nil
+
+  unless Chef::Platform.windows?
+    option :daemonize,
+      :short => "-d",
+      :long => "--daemonize",
+      :description => "Daemonize the process",
+      :proc => lambda { |p| true }
+  end
+
+  option :pid_file,
+    :short        => "-P PID_FILE",
+    :long         => "--pid PIDFILE",
+    :description  => "Set the PID file location, defaults to /tmp/chef-client.pid",
+    :proc         => nil
+
+  option :interval,
+    :short => "-i SECONDS",
+    :long => "--interval SECONDS",
+    :description => "Run chef-client periodically, in seconds",
+    :proc => lambda { |s| s.to_i }
+
+  option :once,
+    :long => "--once",
+    :description => "Cancel any interval or splay options, run chef once and exit",
+    :boolean => true
+
+  option :json_attribs,
+    :short => "-j JSON_ATTRIBS",
+    :long => "--json-attributes JSON_ATTRIBS",
+    :description => "Load attributes from a JSON file or URL",
+    :proc => nil
 
   option :node_name,
-    short:        "-N NODE_NAME",
-    long:         "--node-name NODE_NAME",
-    description:  "The node name for this client",
-    proc:         nil
+    :short => "-N NODE_NAME",
+    :long => "--node-name NODE_NAME",
+    :description => "The node name for this client",
+    :proc => nil
+
+  option :splay,
+    :short => "-s SECONDS",
+    :long => "--splay SECONDS",
+    :description => "The splay time for running at intervals, in seconds",
+    :proc => lambda { |s| s.to_i }
+
+  option :chef_server_url,
+    :short => "-S CHEFSERVERURL",
+    :long => "--server CHEFSERVERURL",
+    :description => "The chef server URL",
+    :proc => nil
 
   option :validation_key,
-    short:        "-K KEY_FILE",
-    long:         "--validation_key KEY_FILE",
-    description:  "Set the validation key file location, used for registering new clients",
-    proc:         nil
+    :short        => "-K KEY_FILE",
+    :long         => "--validation_key KEY_FILE",
+    :description  => "Set the validation key file location, used for registering new clients",
+    :proc         => nil
 
   option :client_key,
-    short:        "-k KEY_FILE",
-    long:         "--client_key KEY_FILE",
-    description:  "Set the client key file location",
-    proc:         nil
+    :short        => "-k KEY_FILE",
+    :long         => "--client_key KEY_FILE",
+    :description  => "Set the client key file location",
+    :proc         => nil
+
+  option :environment,
+    :short        => '-E ENVIRONMENT',
+    :long         => '--environment ENVIRONMENT',
+    :description  => 'Set the Chef Environment on the node'
+
+  option :override_runlist,
+    :short        => "-o RunlistItem,RunlistItem...",
+    :long         => "--override-runlist RunlistItem,RunlistItem...",
+    :description  => "Replace current run list with specified items for a single run",
+    :proc         => lambda{|items|
+      items = items.split(',')
+      items.compact.map{|item|
+        Chef::RunList::RunListItem.new(item)
+      }
+    }
+
+  option :runlist,
+    :short        => "-r RunlistItem,RunlistItem...",
+    :long         => "--runlist RunlistItem,RunlistItem...",
+    :description  => "Permanently replace current run list with specified items",
+    :proc         => lambda{|items|
+      items = items.split(',')
+      items.compact.map{|item|
+        Chef::RunList::RunListItem.new(item)
+      }
+    }
+  option :why_run,
+    :short        => '-W',
+    :long         => '--why-run',
+    :description  => 'Enable whyrun mode',
+    :boolean      => true
+
+  option :client_fork,
+    :short        => "-f",
+    :long         => "--[no-]fork",
+    :description  => "Fork client",
+    :boolean      => true
+
+  option :enable_reporting,
+    :short        => "-R",
+    :long         => "--enable-reporting",
+    :description  => "Enable reporting data collection for chef runs",
+    :boolean      => true
+
+  option :local_mode,
+    :short        => "-z",
+    :long         => "--local-mode",
+    :description  => "Point chef-client at local repository",
+    :boolean      => true
+
+  option :chef_zero_host,
+    :long         => "--chef-zero-host HOST",
+    :description  => "Host to start chef-zero on"
+
+  option :chef_zero_port,
+    :long         => "--chef-zero-port PORT",
+    :description  => "Port (or port range) to start chef-zero on.  Port ranges like 1000,1010 or 8889-9999 will try all given ports until one works."
+
+  option :disable_config,
+    :long         => "--disable-config",
+    :description  => "Refuse to load a config file and use defaults. This is for development and not a stable API",
+    :boolean      => true
+
+  option :run_lock_timeout,
+    :long         => "--run-lock-timeout SECONDS",
+    :description  => "Set maximum duration to wait for another client run to finish, default is indefinitely.",
+    :proc         => lambda { |s| s.to_i }
 
 
   SHUTDOWN_SIGNAL = "1".freeze
@@ -196,6 +345,10 @@ class Chef::Application::Init < Chef::Application
     super
   end
 
+  def setup_application
+    # Nothing here, just need to override the method
+  end
+
   def reconfigure
     super
     Chef::Config[:node_name] ||= ENV['CHEF_NODE_NAME']
@@ -203,12 +356,9 @@ class Chef::Application::Init < Chef::Application
 
   def run_application
     start_supervisor
+    bootstrap_node if Chef::Config[:bootstrap]
 
-    if Chef::Config[:bootstrap]
-      bootstrap_node
-    elsif Chef::Config[:run_chef_client]
-      run_chef_client
-    end
+    SELF_PIPE[1].putc(RUN_CHEF_CLIENT) if Chef::Config[:run_chef_client]
 
     loop do
       begin
@@ -218,9 +368,9 @@ class Chef::Application::Init < Chef::Application
         exit!('Shutting down', 0) if signal == SHUTDOWN_SIGNAL
         clean_and_exit!('Shutting down', 0) if signal == SHUTDOWN_REMOVE_CLIENT_SIGNAL
         run_chef_client if signal == RUN_CHEF_CLIENT
-      # rescue SystemExit => e
-      #   # Catch exits and make sure to cleanly shutdown
-      #   exit!("#{e.class}: #{e.message}", e.status)
+      rescue SystemExit => e
+        # Catch exits and make sure to cleanly shutdown
+        exit!("#{e.class}: #{e.message}", e.status)
       rescue Exception => e
         # Catch a chef-client run error
         fatal!("#{e.class}: #{e.message}", 1)
@@ -233,12 +383,13 @@ class Chef::Application::Init < Chef::Application
   # then cleans up the chef server artifacts before exiting.
   #
   def bootstrap_node
-    shell_out!("chef-client #{ARGV.clone.join(' ')} --once")
+    args = strip_chef_init_options(ARGV.clone)
+    Chef::Log.info("chef-client #{args.join(' ')} --once")
+    pid = ::Process.spawn("chef-client #{args.join(' ')} --once")
+    _pid, status = ::Process.wait2(pid)
     delete_client_key
     empty_secure_directory if Chef::Config[:remove_secure_directory]
-    SELF_PIPE[1].putc(SHUTDOWN_REMOVE_CLIENT_SIGNAL)
-  rescue Mixlib::ShellOut::ShellCommandFailed => e
-    clean_and_exit!(e.message, 1)
+    clean_and_exit!('Shutting down', status.exitstatus)
   end
 
   #
@@ -247,13 +398,15 @@ class Chef::Application::Init < Chef::Application
   #   b) spawning a chef-client process
   #
   def run_chef_client
-    if File.exist?(Chef::Config[:pid_file])
+    if !Chef::Config[:pid_file].nil? && File.exist?(Chef::Config[:pid_file])
       ::Process.kill('USR1', ::File.read(config[:pid_file]).to_i)
     else
       pid = ::Process.spawn("chef-client #{ARGV.clone.join(' ')}")
       ::Process.detach(pid)
-      sleep 1 until ::File.exist?(Chef::Config[:client_key])
-      delete_validation_key
+      Thread.new do
+        sleep 1 until ::File.exist?(Chef::Config[:client_key])
+        delete_validation_key
+      end
     end
   end
 
@@ -278,6 +431,25 @@ class Chef::Application::Init < Chef::Application
     ::File.delete(Chef::Config[:validation_key]) if ::File.exist?(Chef::Config[:validation_key]) && ::File.exist?(Chef::Config[:client_key])
   end
 
+  def strip_chef_init_options(argv)
+    init_bool_options = %w( bootstrap run-chef-client remove-secure-directory )
+    init_options = %w( supervisor-pid secure-directory )
+
+    init_bool_options.each do |option|
+      argv.delete("--#{option}")
+      argv.delete("--no-#{option}")
+    end
+
+    init_options.each do |option|
+      if i = argv.index("--#{option}") != nil
+        argv.delete_at(i)
+        argv.delete_at(i+1)
+      end
+    end
+
+    argv
+  end
+
   #
   # Extracted from Chef::Knife.delete_object, because it has a
   # confirmation step built in. By specifying the USR1 signal they
@@ -299,7 +471,7 @@ class Chef::Application::Init < Chef::Application
   def start_supervisor
     Chef::Log.info('Starting Supervisor')
     supervisor_pid = ::Process.spawn(Chef::Config[:supervisor_start_command])
-    ::File.open(config[:supervisor_pid_file], 'w+') {|f| f.puts supervisor_pid }
+    ::File.open(Chef::Config[:supervisor_pid_file], 'w+') {|f| f.puts supervisor_pid }
     Chef::Log.info("Supervisor pid: #{supervisor_pid}")
   end
 
@@ -308,12 +480,13 @@ class Chef::Application::Init < Chef::Application
   # during the start
   #
   def shutdown_supervisor
-    supervisor_pid = ::File.read(config[:supervisor_pid_file]).to_i
+    supervisor_pid = ::File.read(Chef::Config[:supervisor_pid_file]).to_i
     ::Process.kill('HUP', supervisor_pid)
-    ::Process.wait supervisor_pid
-    ::FileUtils.rm_rf(config[:supervisor_pid_file])
+    ::Process.wait(supervisor_pid)
   rescue SystemCallError => e
     # This will be reached if the supervisor is already dead
+  ensure
+    ::FileUtils.rm_rf(Chef::Config[:supervisor_pid_file])
   end
 
   #
@@ -333,8 +506,8 @@ class Chef::Application::Init < Chef::Application
   #   The exit code to return
   #
   def clean_and_exit!(msg, err = -1)
-    destroy_item(Chef::Node, Chef::Config[:node_name], 'node')
-    destroy_item(Chef::ApiClient, Chef::Config[:node_name], 'client')
+    destroy_item(Chef::Node, Chef::Config[:node_name], 'node') unless Chef::Config[:local_mode]
+    destroy_item(Chef::ApiClient, Chef::Config[:node_name], 'client') unless Chef::Config[:local_mode]
     exit!(msg, err)
   end
 
