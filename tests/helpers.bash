@@ -33,7 +33,7 @@ chef_init_bootstrap() {
 # @param [String] $2
 #   Which first-boot.json to use: passing or failing
 #
-chef_init() {
+start_chef_init() {
   chef-init --config "$FIXTURE_ROOT/client.rb" "$@" >"$CHEF_INIT_LOG" &
   echo "$!" >"$BATS_TMPDIR/chef-init.pid"
   sleep 5
@@ -47,6 +47,7 @@ stop_chef_init() {
   kill -SIGTERM "$chef_init_pid"
   wait "$chef_init_pid" 2>/dev/null
   rm -rf "$BATS_TMPDIR/chef-init.pid"
+  sleep 7
 }
 
 #
