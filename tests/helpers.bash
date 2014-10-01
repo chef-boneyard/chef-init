@@ -134,6 +134,17 @@ assert_cleanup_success() {
 
 
 #
+# Assert that the given binary is in the path
+#
+# @param [String] $1
+#   The name of the binary
+#
+assert_in_path() {
+  run which "$1"
+  assert_success
+}
+
+#
 # Assert that the process is not running.
 #
 # @param [String] $1
