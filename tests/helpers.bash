@@ -34,18 +34,18 @@ chef_init_bootstrap() {
 #   Which first-boot.json to use: passing or failing
 #
 start_chef_init() {
-  chef-init --config "$FIXTURE_ROOT/client.rb" "$@" >"$CHEF_INIT_LOG" &
+  chef-init --config "$FIXTURE_ROOT/client.rb" "$@" 2>"$CHEF_INIT_LOG" &
   echo "$!" >"$BATS_TMPDIR/chef-init.pid"
-  sleep 5
+  sleep 5 2>/dev/null
 }
 
 #
 # Stop the chef-init --onboot process that is running in the background
 #
 stop_chef_init() {
-  chef_init_pid=$(cat "$BATS_TMPDIR/chef-init.pid")
-  kill -SIGTERM "$chef_init_pid"
-  wait "$chef_init_pid" 2>/dev/null
+  #chef_init_pid=$(cat "$BATS_TMPDIR/chef-init.pid")
+  #kill -SIGTERM "$chef_init_pid"
+  #wait "$chef_init_pid" 2>/dev/null
   rm -rf "$BATS_TMPDIR/chef-init.pid"
   sleep 7
 }
@@ -54,12 +54,9 @@ stop_chef_init() {
 # Start the temporary Chef Server
 #
 start_chef_server() {
-  cp -R "$FIXTURE_ROOT/chef_data" "$BATS_TMPDIR/chef_data"
-  knife serve --chef-repo-path "$BATS_TMPDIR/chef_data" \
-    --chef-zero-host "127.0.0.1" \
-    --chef-zero-port "8889" \
-    --config "$FIXTURE_ROOT/client.rb" >"$CHEF_SERVER_LOG" &
-  echo "$!" >"$BATS_TMPDIR/chef-server.pid"
+  rm -rf /tmp/chef-server.pid
+  knife serve --chef-repo-path "$BATS_TMPDIR/chef_data" --chef-zero-host "localhost" --chef-zero-port "8889" --config "$FIXTURE_ROOT/client.rb" >&2 &
+  echo "$!" > /tmp/chef-server.pid
 }
 
 #
@@ -67,10 +64,10 @@ start_chef_server() {
 #rm -rf "$BATS_TMPDIR/chef_data"
 #
 stop_chef_server() {
-  chef_server_pid=$(cat "$BATS_TMPDIR/chef-server.pid")
-  kill -SIGINT "$chef_server_pid"
-  wait "$chef_server_pid" 2>/dev/null
-  rm -rf "$BATS_TMPDIR/chef-server.pid"
+  local pid=$(cat /tmp/chef-server.pid)
+  kill -9 $pid
+  wait $pid >/dev/null || true
+  rm -rf /tmp/chef-server.pid
 }
 
 #
@@ -89,20 +86,20 @@ find_process() {
 }
 
 refresh_tmpdata() {
-  rm -rf "$BATS_TMPDIR/chef_data"
-  cp -R "$FIXTURE_ROOT/chef_data" "$BATS_TMPDIR/chef_data"
+  rm -rf "$BATS_TMPDIR/chef_data" >&2 || true
+  cp -R "$FIXTURE_ROOT/chef_data" "$BATS_TMPDIR/chef_data" >&2 || true
 }
 
 #
 # Teardown tasks
 #
 teardown_common() {
-  pkill "chef-init --bootstrap"
-  pkill "chef-init --onboot"
-  rm -rf /opt/chef/service/*
-  rm -rf /opt/chef/sv/*
+  #pkill "chef-init --bootstrap"
+  #pkill "chef-init --onboot"
+  rm -rf /opt/chef/service/* >&2 || true
+  rm -rf /opt/chef/sv/* >&2 || true
   #rm -rf "$CHEF_INIT_LOG"
-  rm -rf /var/log/chef-init*
+  rm -rf /var/log/chef-init* >&2 || true
 }
 
 #

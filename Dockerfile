@@ -1,4 +1,4 @@
-FROM chef-init-dev
+FROM chef-init-local
 
 # Copy the chef-init gem over and install it!
 COPY pkg/chef-init-1.0.0.dev.gem chef-init.gem

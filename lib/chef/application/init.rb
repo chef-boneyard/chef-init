@@ -21,6 +21,8 @@ require 'chef/log'
 require 'chef/config_fetcher'
 require 'chef/handler/error_report'
 require 'chef/workstation_config_loader'
+require 'chef/node'
+require 'chef/api_client'
 
 require 'chef/mixin/shell_out'
 require 'chef-init/config'
@@ -72,7 +74,7 @@ class Chef::Application::Init < Chef::Application
     boolean:      true,
     proc:         lambda {|v|
       test_dir = File.expand_path(File.join(__FILE__, "../../../..", 'tests'))
-      ::Kernel.exec("bats #{test_dir}/local_bootstrap.bats")
+      ::Kernel.exec("bats #{test_dir}/server_bootstrap.bats")
     }
 
   option :run_chef_client,
@@ -387,9 +389,11 @@ class Chef::Application::Init < Chef::Application
     Chef::Log.info("chef-client #{args.join(' ')} --once")
     pid = ::Process.spawn("chef-client #{args.join(' ')} --once")
     _pid, status = ::Process.wait2(pid)
+    #destroy_item(Chef::Node, Chef::Config[:node_name], 'node') unless Chef::Config[:local_mode]
+    #destroy_item(Chef::ApiClient, Chef::Config[:node_name], 'client') unless Chef::Config[:local_mode]
     delete_client_key
     empty_secure_directory if Chef::Config[:remove_secure_directory]
-    clean_and_exit!('Shutting down', status.exitstatus)
+    exit!('Shutting down', status.exitstatus)
   end
 
   #
