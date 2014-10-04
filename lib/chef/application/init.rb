@@ -338,11 +338,7 @@ class Chef::Application::Init < Chef::Application
 
   def load_config_file
     if !config.has_key?(:config_file) && !config[:disable_config]
-      if config[:local_mode]
-        config[:config_file] = Chef::WorkstationConfigLoader.new(nil, Chef::Log).config_location
-      else
-        config[:config_file] = Chef::Config.platform_specific_path("/etc/chef/client.rb")
-      end
+      config[:config_file] = Chef::Config.platform_specific_path("/etc/chef/client.rb")
     end
     super
   end
@@ -387,10 +383,13 @@ class Chef::Application::Init < Chef::Application
   def bootstrap_node
     args = strip_chef_init_options(ARGV.clone)
     Chef::Log.info("chef-client #{args.join(' ')} --once")
+
+    args << ["--config", Chef::Config[:config_file]] if Chef::Config[:local_mode]
+
     pid = ::Process.spawn("chef-client #{args.join(' ')} --once")
     _pid, status = ::Process.wait2(pid)
-    #destroy_item(Chef::Node, Chef::Config[:node_name], 'node') unless Chef::Config[:local_mode]
-    #destroy_item(Chef::ApiClient, Chef::Config[:node_name], 'client') unless Chef::Config[:local_mode]
+    destroy_item(Chef::Node, Chef::Config[:node_name], 'node') unless Chef::Config[:local_mode]
+    destroy_item(Chef::ApiClient, Chef::Config[:node_name], 'client') unless Chef::Config[:local_mode]
     delete_client_key
     empty_secure_directory if Chef::Config[:remove_secure_directory]
     exit!('Shutting down', status.exitstatus)
