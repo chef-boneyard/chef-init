@@ -15,13 +15,14 @@
 # limitations under the License.
 #
 
-require 'chef'
-require 'chef/recipe'
-
 $:.unshift(File.join(File.dirname(__FILE__), "..", "lib"))
 $:.unshift(File.expand_path("../lib", __FILE__))
 $:.unshift(File.dirname(__FILE__))
 
+
+#
+# Unit Testing Setup
+#
 RSpec.configure do |c|
   c.expect_with :rspec do |config|
     config.syntax = :expect

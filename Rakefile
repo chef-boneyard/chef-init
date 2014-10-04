@@ -19,18 +19,6 @@ task :build_dev do
   system 'docker build -t chef-init-dev ./'
 end
 
-desc 'verify the dev docker image'
-task :verify do
-  pid = `docker run -d chef-init-dev chef-init --verify `
-  system "docker logs -f #{pid}"
-end
-
-desc 'Build chef-init-dev image and run chef-init --verify'
-task :build_and_verify do
-  Rake::Task['build_dev'].invoke
-  Rake::Task['verify'].invoke
-end
-
 desc 'Build chef-init-dev image and enter it'
 task :build_and_enter do
   Rake::Task['build_dev'].invoke

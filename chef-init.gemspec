@@ -13,7 +13,7 @@ Gem::Specification.new do |s|
   s.homepage      = 'http://getchef.com'
   s.license       = 'Apache 2.0'
 
-  s.files = %w(Rakefile README.md CONTRIBUTING.md) + Dir.glob("{bin,lib,spec,tests}/**/*", File::FNM_DOTMATCH).reject do |f|
+  s.files = %w(Rakefile README.md CONTRIBUTING.md) + Dir.glob("{bin,lib,spec}/**/*", File::FNM_DOTMATCH).reject do |f|
     File.directory?(f)
   end
   s.executables   = s.files.grep(%r{^bin/}) { |f| File.basename(f) }
@@ -22,8 +22,8 @@ Gem::Specification.new do |s|
 
   s.add_dependency 'chef', '= 12.0.0.alpha.2'
 
-  s.add_development_dependency 'rake', '~> 10.1.0'
+  s.add_development_dependency 'rake', '~> 10.3.0'
   %w( rspec rspec-core rspec-expectations rspec-mocks).each do |rspec|
-    s.add_development_dependency rspec, '~> 2.14.0'
+    s.add_development_dependency rspec, '~> 3.0.0'
   end
 end

@@ -15,6 +15,7 @@
 # limitations under the License.
 #
 
+require 'spec_helper'
 require 'chef/provider/container_service'
 
 describe Chef::Provider::ContainerService do
