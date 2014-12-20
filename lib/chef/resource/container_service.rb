@@ -31,8 +31,18 @@ class Chef
           Chef::Log.info("Provider for service[#{@service_name}] has been " \
             "replaced with Chef::Provider::ContainerService::Runit")
           @provider = Chef::Provider::ContainerService::Runit
+
         end
       end
+
+      def provider(arg=nil)
+          Chef::Provider::ContainerService::Runit
+      end
+
+      def provider=(str)
+          @provider = Chef::Provider::ContainerService::Runit
+      end
+
 
       def container_service_command_specified?
         unless @run_context.nil? || @run_context.node.nil?
