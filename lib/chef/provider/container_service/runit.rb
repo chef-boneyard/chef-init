@@ -108,6 +108,7 @@ class Chef
         end
 
         def restart_service
+          wait_for_service_enable
           shell_out!("#{sv_bin} restart #{service_dir_name}")
         end
 
